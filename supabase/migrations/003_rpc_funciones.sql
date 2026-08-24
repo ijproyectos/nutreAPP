@@ -32,9 +32,14 @@ begin
   values (v_profesional_id, p_nombre, p_email, p_telefono, p_fecha_nacimiento)
   returning id into v_paciente_id;
 
+  -- Columnas calificadas con "invitaciones." en el RETURNING: sin esto,
+  -- "token" es ambiguo entre la columna de la tabla y la variable de salida
+  -- `token` que crea `returns table (..., token uuid)` (mismo nombre) —
+  -- plpgsql.variable_conflict default es 'error', así que rompe en runtime,
+  -- no en el CREATE FUNCTION. Ver 006_fix_invitar_paciente_token_ambiguo.sql.
   insert into invitaciones (profesional_id, paciente_id, email)
   values (v_profesional_id, v_paciente_id, p_email)
-  returning id, token into v_invitacion_id, v_token;
+  returning invitaciones.id, invitaciones.token into v_invitacion_id, v_token;
 
   return query select v_paciente_id, v_invitacion_id, v_token;
 end;
