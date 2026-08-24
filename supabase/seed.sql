@@ -1,0 +1,23 @@
+-- NutrIA — seed de ejemplo
+-- No siembra `profesionales` ni `pacientes` reales: profesionales se crea vía
+-- self-signup (RF-011) y pacientes vía invitación (RF-020), ambos requieren
+-- una fila real en auth.users que solo existe después de un login real.
+--
+-- Para probar el dashboard con datos, dar de alta un profesional real primero
+-- (login con Google) y después correr algo como esto, reemplazando el uuid:
+--
+-- with p as (
+--   select id as profesional_id from profesionales where email = 'tu-email@ejemplo.com'
+-- ), pac as (
+--   insert into pacientes (profesional_id, nombre, email, telefono, estado)
+--   select profesional_id, v.nombre, v.email, v.telefono, 'activo'
+--   from p, (values
+--     ('Ana Pérez', 'ana@ejemplo.com', '+54 9 11 0000-0001'),
+--     ('Carlos Gómez', 'carlos@ejemplo.com', '+54 9 11 0000-0002'),
+--     ('Lucía Fernández', 'lucia@ejemplo.com', '+54 9 11 0000-0003')
+--   ) as v(nombre, email, telefono)
+--   returning id, profesional_id, nombre
+-- )
+-- insert into turnos (profesional_id, paciente_id, fecha_hora, tipo, estado)
+-- select profesional_id, id, now() + interval '2 days', 'videollamada', 'pendiente'
+-- from pac limit 1;
