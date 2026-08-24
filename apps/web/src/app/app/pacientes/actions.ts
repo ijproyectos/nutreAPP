@@ -33,6 +33,12 @@ export async function crearPaciente(
   });
 
   if (error) {
+    console.error("[crearPaciente] invitar_paciente RPC falló:", {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+    });
     return {
       status: "error",
       error: "No se pudo crear el paciente. Intentá de nuevo.",
