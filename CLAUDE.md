@@ -4,18 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project state
 
-**Fase 0: setup del proyecto + esquema completado. Supabase todavía no existe, Google OAuth todavía no está configurado, ninguna pantalla está construida.** `apps/web/` es un Next.js 16 (Turbopack, App Router) recién scaffoldeado — build y lint limpios, sin páginas propias todavía (solo el default de `create-next-app`). shadcn/ui instalado en estilo `base-nova` (mismo criterio que Raíces del Sur: `@base-ui/react`, no Radix — composición trigger/select/dialog con `render` prop, no `asChild`).
+**Fase 1: Supabase real y schema aplicado. Falta terminar de conectar Google OAuth y escribir el código de auth — ninguna pantalla está construida todavía.** `apps/web/` es un Next.js 16 (Turbopack, App Router) recién scaffoldeado — build y lint limpios, sin páginas propias todavía (solo el default de `create-next-app`). shadcn/ui instalado en estilo `base-nova` (mismo criterio que Raíces del Sur: `@base-ui/react`, no Radix — composición trigger/select/dialog con `render` prop, no `asChild`).
 
-Las migraciones SQL están **escritas pero no aplicadas** (no hay proyecto Supabase todavía): `supabase/migrations/001_initial_schema.sql` (10 tablas, ver `docs/data-model.md`), `002_rls_policies.sql` (funciones helper `auth_profesional_id()`/`auth_paciente_id()` + policies en cada tabla), `003_rpc_funciones.sql` (`invitar_paciente`, `aceptar_invitacion`, `confirmar_turno`).
+**Supabase está vivo**: proyecto ref `mgscprkbdbwejfhvkggm` (región `us-east-1`), URL `https://mgscprkbdbwejfhvkggm.supabase.co`. Las 3 migraciones (`supabase/migrations/001_initial_schema.sql`, `002_rls_policies.sql`, `003_rpc_funciones.sql`) están **aplicadas y verificadas**: 10 tablas, RLS habilitado en las 10, 5 funciones (`auth_profesional_id`, `auth_paciente_id`, `invitar_paciente`, `aceptar_invitacion`, `confirmar_turno`). Aplicadas vía `psql` por el session pooler (`aws-0-us-east-1.pooler.supabase.com:5432`, user `postgres.mgscprkbdbwejfhvkggm`) — mismo mecanismo que Raíces del Sur; no hay Supabase CLI instalado, `psql` viene de `libpq` sin linkear al PATH (`find /opt/homebrew/Cellar/libpq -name psql` si cambia la versión). No re-aplicar sin chequear el estado actual del proyecto primero.
 
-**Siguiente paso real, en este orden** (bloqueado por acciones manuales del usuario en dashboards externos, no por código):
-1. Crear el proyecto en Supabase (dashboard) y pasar credenciales (URL, anon key, service role key, y la connection string del pooler para aplicar migraciones vía `psql`, mismo mecanismo que se usó en Raíces del Sur).
-2. Aplicar `001` → `002` → `003` en ese orden vía `psql` a través del session pooler.
-3. Crear credenciales OAuth de Google en Google Cloud Console (Client ID + Secret) y cargarlas en Supabase Auth → Providers → Google.
-4. Configurar el consent screen — **acá NutrIA difiere del patrón de un proyecto de un solo tenant**: no alcanza con "Testing" + allowlist de test users, porque va a haber pacientes reales de terceros. Hay que iniciar el trámite de verificación de la app OAuth en paralelo (lead time de días/semanas — ver `docs/architecture.md` §4). Mientras tanto se puede desarrollar con test users igual que cualquier app en Testing.
-5. Recién ahí tiene sentido escribir el código de auth (`login`, `onboarding`, `callback`, `proxy.ts`) porque hace falta un proyecto real contra el que probar.
+Credenciales en `.env.local` (raíz, gitignored; `apps/web/.env.local` es symlink) — `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` ya cargadas.
 
-Después de eso, construir en el orden que marca `docs/architecture.md` §5 (flujos críticos) y el roadmap original: auth + esquema → CRUD pacientes + agenda → Bandeja de hoy + portal paciente (login, ver turno, ver plan) → chat + cobros + envío de planes.
+**Falta antes de escribir el código de auth:**
+1. Confirmar que el usuario ya activó el provider de Google en Supabase (Authentication → Providers → Google, con el Client ID/Secret de Google Cloud Console) y agregó el redirect URI `https://mgscprkbdbwejfhvkggm.supabase.co/auth/v1/callback` en Google Cloud Console — son pasos de dashboard, no verificables desde acá sin credenciales de esos paneles.
+2. Verificación de la app OAuth en Google (consent screen) — **NutrIA difiere del patrón de un proyecto de un solo tenant**: no alcanza con "Testing" + allowlist, va a haber pacientes reales de terceros. Trámite con lead time de días/semanas (ver `docs/architecture.md` §4) — se puede seguir desarrollando con test users mientras tanto, pero no lanzar con pacientes reales hasta que esté verificada.
+
+Después de confirmar el punto 1, escribir el código de auth (`login`, `onboarding`, `callback`, `proxy.ts`) y seguir con el orden de `docs/architecture.md` §5 (flujos críticos) y el roadmap original: CRUD pacientes + agenda → Bandeja de hoy + portal paciente (login, ver turno, ver plan) → chat + cobros + envío de planes.
 
 ## Qué es
 
