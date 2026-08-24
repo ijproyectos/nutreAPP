@@ -165,7 +165,12 @@ export default async function PacientesPage(
                         {iniciales}
                       </div>
                       <div className="flex flex-col">
-                        <span className="font-medium">{p.nombre}</span>
+                        <Link
+                          href={`/app/pacientes/${p.id}`}
+                          className="font-medium hover:underline"
+                        >
+                          {p.nombre}
+                        </Link>
                         {edad !== null && (
                           <span className="text-xs text-muted-foreground">
                             {edad} años

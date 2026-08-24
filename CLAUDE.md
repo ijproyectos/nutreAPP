@@ -4,7 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project state
 
-**Fase 3: login con Google probado y funcionando en vivo. Shell + Bandeja de hoy + Pacientes construidos con datos reales, matcheando el mockup real del profesional que pasó el usuario.** `apps/web/` es Next.js 16 (Turbopack, App Router) — build y lint limpios. shadcn/ui en estilo `base-nova` (`@base-ui/react`, no Radix — composición con `render` prop, no `asChild`).
+**Fase 4: login probado en vivo + shell/dashboard/pacientes + laboratorios clínicos (modelo de datos + carga, sin la generación de plan con IA todavía — parada deliberada, ver abajo).** `apps/web/` es Next.js 16 (Turbopack, App Router) — build y lint limpios. shadcn/ui en estilo `base-nova` (`@base-ui/react`, no Radix — composición con `render` prop, no `asChild`).
+
+**Laboratorios clínicos** (agregado post-v1, no estaba en el PRD original — ver `docs/architecture.md` §9 y `docs/requirements.md` RF-084/085/090/091 para el detalle):
+- `supabase/migrations/004_laboratorios.sql` — tabla `laboratorios` + RLS + bucket privado de Storage (`laboratorios`) + policies de `storage.objects`. **Aplicada y verificada** (mismo mecanismo `psql`/pooler).
+- `src/lib/laboratorios/parsear.ts` — extracción de texto de PDF con `unpdf` (sin OCR, sin dependencias nativas) + regex simples por analito. Nunca lanza — si falla, `valores = {}`.
+- `src/app/portal/laboratorios/` — el paciente sube el archivo (Server Action `subirLaboratorio`: upload a Storage + insert + intento de parseo, todo en un solo paso; subió `experimental.serverActions.bodySizeLimit` a 15mb en `next.config.ts` porque el default de 1MB no alcanza para un PDF/foto) y ve su propio listado con estado.
+- `src/app/app/pacientes/[id]/` — **ficha de paciente nueva** (no existía antes de esto — RF-022 solo estaba especificada, no construida). Por ahora solo tiene la sección Laboratorios: revisar/editar valores/validar/rechazar. El resto de la ficha (historial de turnos, mediciones) queda para cuando se necesite.
+- Bandeja de hoy: nueva alerta (`src/lib/queries/laboratorios.ts`) — laboratorios `pendiente_revision` hace más de 48hs.
+- Trade-off de RLS documentado (no un bug): el paciente puede reescribir `notas_profesional` de su propio laboratorio mientras siga pendiente — ver la nota en `004_laboratorios.sql` y en `docs/architecture.md` §9 antes de "corregirlo" sin releer por qué se aceptó así.
+
+**Pendiente, explícitamente pausado a pedido del usuario**: generación de plan nutricional con IA (Anthropic API) + edición manual del borrador — ver el prompt que agregó laboratorios para el spec completo (tabla `planes` ampliada con `estado`/`generado_con_ia`/`laboratorio_id`, `lib/ai/generar-plan.ts`, botón "Generar plan con IA" en la ficha del paciente). No arrancar esto sin confirmación — es la continuación explícitamente acordada, no algo ya en curso.
 
 **Paleta y tipografía ya son las del diseño real** (no un placeholder): sidebar violeta/ciruela oscuro (`--sidebar`), fondo crema (`--background`), acento naranja/coral (`--accent`, `--destructive` para prioridad ALTA), heading serif con Google Font Lora (`--font-heading`, aplicado a h1/h2/h3 vía `@layer base`) — todo en `globals.css`. Los valores se estimaron a ojo de las capturas (no hay extractor de color exacto) — si algo se ve desalineado con el diseño original, es candidato a ajuste fino, no a rediseño.
 

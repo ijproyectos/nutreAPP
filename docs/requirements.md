@@ -85,6 +85,22 @@ Listado de turnos propios, confirmar los pendientes.
 **RF-083 — Chat con su profesional**
 Ver historial y enviar mensajes.
 
+**RF-084 — Subir laboratorio**
+PDF/JPG/PNG/HEIC hasta 15MB + fecha del estudio → sube a Storage privado, queda `pendiente_revision`. Intenta parsear valores automáticamente (solo PDF con texto, sin OCR) — si no detecta nada, no bloquea la subida, el profesional carga a mano al validar.
+
+**RF-085 — Ver mis laboratorios**
+Listado propio con estado (pendiente/validado/rechazado), valores detectados/cargados, y la nota del profesional si la dejó al validar.
+
+## Laboratorios clínicos (lado profesional)
+
+Agregado post-v1 (no estaba en el checklist original del MVP) — ver `docs/architecture.md` §9 para el diseño técnico (bucket, RLS, parseo).
+
+**RF-090 — Revisar y validar laboratorio**
+Desde la ficha del paciente (`/app/pacientes/[id]`): ver el archivo (link firmado, temporal), editar los valores detectados o cargarlos a mano, y marcar `validado` o `rechazado`. Solo un laboratorio `validado` puede usarse como input de un plan generado con IA (RF-100, no implementado todavía).
+
+**RF-091 — Alerta de laboratorios sin revisar**
+Bandeja de hoy: regla nueva, prioridad MEDIA — laboratorios en `pendiente_revision` hace más de 48hs, con link directo a la ficha del paciente correspondiente.
+
 ## Fuera de alcance de v1
 
 Ver la lista en `docs/product.md` — cobro online, WhatsApp, CSV, upload de archivos en planes, auditoría, cron de recordatorios, admin interno.

@@ -131,6 +131,21 @@ MVP: contenido en texto plano/markdown. **Sin upload de archivo** (`archivo_url`
 | leido | boolean not null | default false |
 | created_at | timestamptz | default now() |
 
+### `laboratorios`
+Agregada post-v1 (no estaba en el PRD original) — carga de laboratorios clínicos desde el portal del paciente, con validación humana obligatoria del profesional antes de que puedan usarse como input de un plan generado con IA. Detalle del flujo y del bucket de Storage: `docs/architecture.md` §9.
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| id | uuid pk | |
+| paciente_id | uuid not null, FK pacientes | |
+| profesional_id | uuid not null, FK profesionales | |
+| archivo_url | text not null | path dentro del bucket privado `laboratorios` (`{paciente_id}/{uuid}-{nombre}`), no una URL pública |
+| fecha_estudio | date not null | |
+| estado | text not null | `pendiente_revision` \| `validado` \| `rechazado`, default `pendiente_revision` |
+| valores | jsonb not null | default `{}` — resultados estructurados (ej. `{"glucosa": 95, "hdl": 55}`), llenado por el parseo automático y/o corregido a mano por el profesional |
+| notas_profesional | text, nullable | opcional, se completa al validar/rechazar |
+| created_at | timestamptz | default now() |
+
 ## Reglas de integridad
 
 - Ningún `pacientes.user_id` se setea desde el cliente directamente: solo vía la RPC `aceptar_invitacion(token)` (`SECURITY DEFINER`), que valida token vigente + email del JWT antes de linkear.

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight, CalendarPlus } from "lucide-react";
 import { getAuthorizedProfesional } from "@/lib/dal";
 import { obtenerPacientesSinProximoTurno } from "@/lib/queries/pacientes";
+import { obtenerLaboratoriosPendientesLargos } from "@/lib/queries/laboratorios";
 import {
   obtenerTurnosSinConfirmar,
   obtenerResumenCobros,
@@ -45,15 +46,23 @@ const PRIORIDAD_ESTILO: Record<Prioridad, string> = {
 export default async function BandejaDeHoyPage() {
   const { supabase, profesional } = await getAuthorizedProfesional();
 
-  const [sinTurno, sinConfirmar, cobros, continuidad, agenda, actividad] =
-    await Promise.all([
-      obtenerPacientesSinProximoTurno(supabase),
-      obtenerTurnosSinConfirmar(supabase),
-      obtenerResumenCobros(supabase),
-      obtenerContinuidad(supabase),
-      obtenerAgendaDeHoy(supabase),
-      obtenerActividadReciente(supabase),
-    ]);
+  const [
+    sinTurno,
+    sinConfirmar,
+    cobros,
+    continuidad,
+    agenda,
+    actividad,
+    laboratoriosPendientes,
+  ] = await Promise.all([
+    obtenerPacientesSinProximoTurno(supabase),
+    obtenerTurnosSinConfirmar(supabase),
+    obtenerResumenCobros(supabase),
+    obtenerContinuidad(supabase),
+    obtenerAgendaDeHoy(supabase),
+    obtenerActividadReciente(supabase),
+    obtenerLaboratoriosPendientesLargos(supabase),
+  ]);
 
   const alertas: Alerta[] = [];
 
@@ -104,6 +113,21 @@ export default async function BandejaDeHoyPage() {
         .join(" · "),
       accionLabel: "Ver agenda →",
       accionHref: "/app/agenda",
+    });
+  }
+
+  if (laboratoriosPendientes.length > 0) {
+    const primero = laboratoriosPendientes[0];
+    alertas.push({
+      prioridad: "MEDIA",
+      titulo: `${laboratoriosPendientes.length} laboratorio${
+        laboratoriosPendientes.length === 1 ? "" : "s"
+      } sin revisar hace más de 48h`,
+      subtitulo: `${primero.pacienteNombre} · esperando hace ${Math.floor(
+        primero.horasEsperando / 24
+      )}d`,
+      accionLabel: "Revisar →",
+      accionHref: `/app/pacientes/${primero.pacienteId}`,
     });
   }
 

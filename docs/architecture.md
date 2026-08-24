@@ -3,7 +3,7 @@
 ## 1. Stack
 
 - **Frontend + backend**: Next.js 16 (App Router, Turbopack), TypeScript, sobre Vercel.
-- **Datos/Auth/Storage**: Supabase (Postgres administrado, Auth con Google OAuth, Row Level Security, Storage para fase 2, Realtime disponible para el chat si hace falta).
+- **Datos/Auth/Storage**: Supabase (Postgres administrado, Auth con Google OAuth, Row Level Security, Storage — bucket privado `laboratorios` en uso desde v1, ver §9; el resto de Storage — archivos de planes — sigue en fase 2). Realtime disponible para el chat si hace falta.
 - **UI**: Tailwind CSS 4 + shadcn/ui (estilo `base-nova`, sobre `@base-ui/react`, no Radix — la composición trigger/select/dialog usa `render` prop en vez de `asChild`). Iconos Lucide.
 - **Validación/forms**: Zod + React Hook Form.
 - **Data fetching**: Server Components por default; TanStack Query solo donde haga falta cache/mutación del lado del cliente (ej. chat con polling).
@@ -107,3 +107,17 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 ```
 La service role key nunca se expone al frontend — solo se usa server-side si hace falta (ej. un futuro job de recordatorios), nunca en un componente cliente ni en una ruta pública.
+
+## 9. Laboratorios clínicos
+
+Dato de salud sensible — bucket de Storage **privado** (`laboratorios`, `supabase/migrations/004_laboratorios.sql`), nunca público. Convención de path: `{paciente_id}/{uuid}-{nombre_original}` — las políticas RLS de `storage.objects` extraen el primer segmento del path (`storage.foldername(name)[1]`) y lo comparan contra `auth_paciente_id()` (dueño) o contra los pacientes del profesional logueado (mismo patrón de las funciones helper de `002_rls_policies.sql`, referenciadas como `public.auth_*_id()` porque el `search_path` en el contexto de `storage.objects` no incluye `public` por default).
+
+**Flujo de subida**: todo pasa por una única Server Action (`src/app/portal/laboratorios/actions.ts` → `subirLaboratorio`), no por un route handler separado — sube el archivo a Storage, inserta la fila en `laboratorios` (`estado = 'pendiente_revision'`) e intenta parsear valores, en ese orden, con el parseo como último paso *best-effort* (un fallo ahí nunca deshace la subida ni el registro). Nota de infra: subir un PDF/foto desde una Server Action necesitó subir `experimental.serverActions.bodySizeLimit` en `next.config.ts` (default de Next es 1MB).
+
+**Parseo automático** (`src/lib/laboratorios/parsear.ts`): solo PDF con capa de texto (extraída con `unpdf`, sin dependencias nativas — se evitó `pdf-parse` por su footgun conocido en entornos serverless). Expresiones regulares simples por analito (glucosa, colesterol total, HDL, LDL, triglicéridos, hierro, vitamina D, TSH, creatinina, urea, hemoglobina, hematocrito) — sin OCR: una imagen escaneada queda con `valores = {}` para carga manual. Deliberado, no una limitación a resolver — ver el prompt original que pidió esto explícitamente.
+
+**Validación humana obligatoria**: un laboratorio recién subido es `pendiente_revision`; el profesional lo valida o rechaza desde la ficha del paciente (`/app/pacientes/[id]`), pudiendo corregir cualquier valor que el parseo haya detectado mal o cargarlos a mano si no detectó nada. Solo `validado` habilita usar esos valores como input de un plan generado con IA (pendiente de implementar — ver el checklist de "Generación de plan con IA" en las notas de la sesión que agregó laboratorios).
+
+**RLS nota de diseño**: el paciente tiene una policy de `UPDATE` sobre su propio laboratorio mientras siga `pendiente_revision` (la usa el parseo automático para guardar `valores` justo después de subir). Esa policy no restringe columna por columna — un cliente que arme el request a mano podría reescribir `notas_profesional` de su propio laboratorio pendiente. Riesgo aceptado para v1 (no puede validarlo ni tocar otros pacientes); si hace falta cerrarlo, la solución es un trigger que bloquee cambios a esa columna desde el lado paciente.
+
+**Bandeja de hoy**: nueva regla (`src/lib/queries/laboratorios.ts`) — laboratorios `pendiente_revision` hace más de 48hs, prioridad MEDIA.

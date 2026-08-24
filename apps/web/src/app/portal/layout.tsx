@@ -1,4 +1,5 @@
 import { getAuthorizedPaciente } from "@/lib/dal";
+import { PortalNav } from "@/components/portal-nav";
 
 // Todo lo que cuelga de /portal requiere una fila en `pacientes` con
 // user_id ya vinculado (vía aceptar_invitacion) — si el usuario logueado es
@@ -9,5 +10,10 @@ export default async function PortalLayout({
 }: LayoutProps<"/portal">) {
   await getAuthorizedPaciente();
 
-  return <div className="flex min-h-screen flex-col">{children}</div>;
+  return (
+    <div className="flex min-h-screen flex-col">
+      <PortalNav />
+      <main className="flex-1">{children}</main>
+    </div>
+  );
 }
