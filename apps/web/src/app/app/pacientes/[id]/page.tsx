@@ -180,6 +180,13 @@ export default async function FichaPacientePage(
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold">Plan alimentario</h2>
         <PlanIAPanel
+          // Fuerza remount cuando cambia la identidad del plan activo (de
+          // null a un id recién generado, o a un id nuevo tras
+          // "Regenerar con IA") — si no, PlanIAPanel reusa la instancia y
+          // el useState local de `contenido` queda con el valor inicial
+          // ("" cuando no había plan), mostrando el textarea vacío aunque
+          // planActivo.contenido ya tenga el plan generado.
+          key={planActivo?.id ?? "sin-plan"}
           pacienteId={paciente.id}
           planActivo={planActivo}
           planesEnviados={planesEnviados}

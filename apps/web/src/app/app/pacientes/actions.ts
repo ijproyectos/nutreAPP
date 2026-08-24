@@ -1,14 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { headers } from "next/headers";
 import { getAuthorizedProfesional } from "@/lib/dal";
-import { enviarInvitacionPaciente } from "@/lib/email/enviar";
 
 export type CrearPacienteState =
   | { status: "idle" }
   | { status: "error"; error: string }
-  | { status: "success"; token: string; emailEnviado: boolean };
+  | { status: "success"; token: string };
 
 /** RF-020: alta de paciente + invitación, vía la RPC atómica invitar_paciente. */
 export async function crearPaciente(
@@ -48,22 +46,7 @@ export async function crearPaciente(
   }
 
   const row = Array.isArray(data) ? data[0] : data;
-
-  // Best-effort: el link para copiar/enviar a mano sigue siendo el camino
-  // principal (RF-020) — el mail es un canal adicional, nunca bloqueante.
-  const hdrs = await headers();
-  const host = hdrs.get("x-forwarded-host") ?? hdrs.get("host");
-  const proto = hdrs.get("x-forwarded-proto") ?? "https";
-  const origin = host ? `${proto}://${host}` : "http://localhost:3000";
-  const link = `${origin}/onboarding/invitacion/${row.token}`;
-
-  const resultado = await enviarInvitacionPaciente({
-    email,
-    nombrePaciente: nombre,
-    link,
-  });
-
   revalidatePath("/app/pacientes");
 
-  return { status: "success", token: row.token, emailEnviado: resultado.enviado };
+  return { status: "success", token: row.token };
 }

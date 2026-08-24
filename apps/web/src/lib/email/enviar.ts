@@ -1,16 +1,19 @@
 import "server-only";
 import { Resend } from "resend";
 
-// Email transaccional: invitación a paciente (RF-020) y recordatorio manual
-// de turno (RF-042). Mismo criterio que src/lib/laboratorios/parsear.ts —
-// nunca lanza. Un mail que no sale no puede tumbar el flujo principal
-// (crear paciente, recordar turno), así que todo error queda logueado y
-// se devuelve como { enviado: false } para que el caller decida qué mostrar.
+// Email transaccional: recordatorio manual de turno (RF-042). La
+// invitación (RF-020) se manda por WhatsApp ahora — ver
+// pacientes/nuevo-paciente-dialog.tsx — no por acá. Mismo criterio que
+// src/lib/laboratorios/parsear.ts: nunca lanza. Un mail que no sale no
+// puede tumbar el flujo de recordatorio, así que todo error queda
+// logueado y se devuelve como { enviado: false } para que el caller
+// decida qué mostrar.
 //
 // Nota: sin dominio verificado en Resend, el remitente de sandbox
 // (onboarding@resend.dev) solo entrega al email dueño de la cuenta de
-// Resend — a cualquier otro destinatario le va a devolver error. Es
-// esperable mientras no se verifique un dominio propio.
+// Resend — a cualquier paciente real le va a devolver error. Es
+// esperable mientras no se verifique un dominio propio (mismo límite
+// que tenía la invitación, por eso se sacó de ahí).
 
 const resend = process.env.RESEND_API_KEY
   ? new Resend(process.env.RESEND_API_KEY)
@@ -41,20 +44,6 @@ async function enviar(params: {
     console.error("[email] Falló el envío:", err);
     return { enviado: false, error: "No se pudo enviar el email." };
   }
-}
-
-export async function enviarInvitacionPaciente(params: {
-  email: string;
-  nombrePaciente: string;
-  link: string;
-}): Promise<ResultadoEnvio> {
-  return enviar({
-    to: params.email,
-    subject: "Te invitaron a NutrIA",
-    html: `<p>Hola ${params.nombrePaciente},</p>
-<p>Tu nutricionista te invitó a sumarte a NutrIA. Entrá a este link e iniciá sesión con tu cuenta de Google para empezar:</p>
-<p><a href="${params.link}">${params.link}</a></p>`,
-  });
 }
 
 export async function enviarRecordatorioTurno(params: {

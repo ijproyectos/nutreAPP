@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { Copy, Check, UserPlus } from "lucide-react";
+import { Copy, Check, UserPlus, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,6 +17,21 @@ import { crearPaciente, type CrearPacienteState } from "./actions";
 
 const initialState: CrearPacienteState = { status: "idle" };
 
+/** Link de WhatsApp para mandar la invitación — RF-020, canal principal
+ * ahora que el envío automático por mail no llega a pacientes reales
+ * sin dominio verificado en Resend (ver src/lib/email/enviar.ts). Con
+ * teléfono cargado abre la conversación directo con ese contacto; sin
+ * teléfono, deja elegir el contacto en WhatsApp. */
+function whatsappHref(telefono: string, nombre: string, link: string) {
+  const texto = encodeURIComponent(
+    `Hola ${nombre}! Te dejo el link para sumarte a NutrIA: ${link}`
+  );
+  const numero = telefono.replace(/[^\d]/g, "");
+  return numero
+    ? `https://wa.me/${numero}?text=${texto}`
+    : `https://api.whatsapp.com/send?text=${texto}`;
+}
+
 export function NuevoPacienteDialog() {
   const [open, setOpen] = useState(false);
   const [state, formAction, pending] = useActionState(
@@ -24,6 +39,8 @@ export function NuevoPacienteDialog() {
     initialState
   );
   const [copied, setCopied] = useState(false);
+  const [nombre, setNombre] = useState("");
+  const [telefono, setTelefono] = useState("");
 
   const inviteLink =
     state.status === "success" && typeof window !== "undefined"
@@ -44,7 +61,11 @@ export function NuevoPacienteDialog() {
         // Reseteamos el estado visual de "copiado" acá (no en un efecto)
         // para la próxima vez que se abra — el estado del form action en
         // sí se resetea solo porque useActionState vive en este componente.
-        if (!next) setCopied(false);
+        if (!next) {
+          setCopied(false);
+          setNombre("");
+          setTelefono("");
+        }
       }}
     >
       <Button
@@ -62,9 +83,8 @@ export function NuevoPacienteDialog() {
             <DialogHeader>
               <DialogTitle>Paciente creado</DialogTitle>
               <DialogDescription>
-                Mandale este link por WhatsApp o email — cuando lo abra e
-                inicie sesión con Google, va a quedar vinculado
-                automáticamente.
+                Mandale este link por WhatsApp — cuando lo abra e inicie
+                sesión con Google, va a quedar vinculado automáticamente.
               </DialogDescription>
             </DialogHeader>
             <div className="flex items-center gap-2 rounded-lg border border-border bg-muted p-2">
@@ -82,12 +102,23 @@ export function NuevoPacienteDialog() {
                 )}
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground">
-              {state.emailEnviado
-                ? "También le mandamos un mail con este link."
-                : "No pudimos mandarle el mail automático — copiá el link y enviáselo vos."}
-            </p>
-            <DialogFooter>
+            <DialogFooter className="sm:justify-between">
+              <Button
+                type="button"
+                variant="outline"
+                className="gap-1.5"
+                nativeButton={false}
+                render={
+                  <a
+                    href={whatsappHref(telefono, nombre, inviteLink ?? "")}
+                    target="_blank"
+                    rel="noreferrer"
+                  />
+                }
+              >
+                <MessageCircle className="size-4" />
+                Enviar por WhatsApp
+              </Button>
               <Button onClick={() => setOpen(false)}>Listo</Button>
             </DialogFooter>
           </>
@@ -103,7 +134,13 @@ export function NuevoPacienteDialog() {
             <form action={formAction} className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="nombre">Nombre</Label>
-                <Input id="nombre" name="nombre" required />
+                <Input
+                  id="nombre"
+                  name="nombre"
+                  value={nombre}
+                  onChange={(e) => setNombre(e.target.value)}
+                  required
+                />
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="email">Email</Label>
@@ -112,9 +149,16 @@ export function NuevoPacienteDialog() {
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="telefono">
                   Teléfono{" "}
-                  <span className="text-muted-foreground">(opcional)</span>
+                  <span className="text-muted-foreground">
+                    (opcional — con código de país, ej. 5491122334455)
+                  </span>
                 </Label>
-                <Input id="telefono" name="telefono" />
+                <Input
+                  id="telefono"
+                  name="telefono"
+                  value={telefono}
+                  onChange={(e) => setTelefono(e.target.value)}
+                />
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="fecha_nacimiento">
