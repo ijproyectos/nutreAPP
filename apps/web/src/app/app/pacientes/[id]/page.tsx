@@ -6,6 +6,7 @@ import { edadDesde, formatoFechaCorta } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { LaboratorioReviewCard } from "./laboratorio-review-card";
 import { PlanIAPanel } from "./plan-ia-panel";
+import { HistoriaClinicaPanel } from "./historia-clinica-panel";
 
 const ESTADO_ESTILO: Record<string, string> = {
   validado: "bg-emerald-100 text-emerald-800 border-transparent",
@@ -25,11 +26,25 @@ export default async function FichaPacientePage(
 
   const { data: paciente } = await supabase
     .from("pacientes")
-    .select("id, nombre, telefono, email, fecha_nacimiento, estado")
+    .select(
+      "id, nombre, telefono, email, fecha_nacimiento, estado, notas_generales"
+    )
     .eq("id", id)
     .maybeSingle();
 
   if (!paciente) notFound();
+
+  const { data: mediciones } = await supabase
+    .from("mediciones")
+    .select("id, fecha, peso")
+    .eq("paciente_id", id)
+    .order("fecha", { ascending: false });
+
+  const { data: turnos } = await supabase
+    .from("turnos")
+    .select("id, fecha_hora, tipo, estado")
+    .eq("paciente_id", id)
+    .order("fecha_hora", { ascending: false });
 
   const { data: laboratorios } = await supabase
     .from("laboratorios")
@@ -97,6 +112,25 @@ export default async function FichaPacientePage(
           {paciente.telefono || "sin teléfono"} · {paciente.email}
         </p>
       </div>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-lg font-semibold">Historia clínica</h2>
+        <HistoriaClinicaPanel
+          pacienteId={paciente.id}
+          mediciones={mediciones ?? []}
+          turnos={(turnos ?? []).map((t) => ({
+            id: t.id,
+            fechaHora: t.fecha_hora,
+            tipo: t.tipo as "presencial" | "videollamada",
+            estado: t.estado as
+              | "pendiente"
+              | "confirmado"
+              | "en_curso"
+              | "cancelado",
+          }))}
+          notasIniciales={paciente.notas_generales}
+        />
+      </section>
 
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold">Laboratorios</h2>
