@@ -24,7 +24,7 @@ export default async function FichaPacientePage(
   const { id } = await props.params;
   const { supabase } = await getAuthorizedProfesional();
 
-  const { data: paciente } = await supabase
+  const { data: paciente, error: pacienteError } = await supabase
     .from("pacientes")
     .select(
       "id, nombre, telefono, email, fecha_nacimiento, estado, notas_generales"
@@ -32,6 +32,20 @@ export default async function FichaPacientePage(
     .eq("id", id)
     .maybeSingle();
 
+  // Distinguir "no existe" de "la query falló" — sin esto, cualquier error
+  // real de Postgres acá (columna que no existe, RLS mal configurada, lo
+  // que sea) se disfraza de 404 en vez de mostrar el problema real. Pasó
+  // en producción: notas_generales no existía todavía en la DB en vivo y
+  // esto tiraba 404 en cualquier ficha de paciente sin loguear nada.
+  if (pacienteError) {
+    console.error("[FichaPacientePage] select de pacientes falló:", {
+      message: pacienteError.message,
+      code: pacienteError.code,
+      details: pacienteError.details,
+      hint: pacienteError.hint,
+    });
+    throw new Error("No se pudo cargar la ficha del paciente.");
+  }
   if (!paciente) notFound();
 
   const { data: mediciones } = await supabase
@@ -116,6 +130,13 @@ export default async function FichaPacientePage(
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold">Historia clínica</h2>
         <HistoriaClinicaPanel
+          // Fuerza remount al cambiar de paciente — mismo motivo que el
+          // key de PlanIAPanel más abajo: el useState de "notas" solo se
+          // inicializa en el mount, así que sin esto una reconciliación
+          // de React entre dos pacientes distintos (misma posición en el
+          // árbol) podría dejar ver/editar las notas del paciente
+          // anterior.
+          key={paciente.id}
           pacienteId={paciente.id}
           mediciones={mediciones ?? []}
           turnos={(turnos ?? []).map((t) => ({

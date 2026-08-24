@@ -22,12 +22,23 @@ export async function generarPlanIA(
   const { supabase, profesional } = await getAuthorizedProfesional();
   const pacienteId = String(formData.get("paciente_id") ?? "");
 
-  const { data: paciente } = await supabase
+  const { data: paciente, error: pacienteError } = await supabase
     .from("pacientes")
     .select("id, nombre, fecha_nacimiento")
     .eq("id", pacienteId)
     .maybeSingle();
 
+  // Mismo criterio que FichaPacientePage: no confundir un error real de
+  // query con "no existe" — acá al menos ya se le mostraba un mensaje al
+  // usuario, pero sin loguear el error real quedaba indiagnosticable.
+  if (pacienteError) {
+    console.error("[generarPlanIA] select de pacientes falló:", pacienteError);
+    return {
+      status: "error",
+      error: "No se pudo leer los datos del paciente. Reintentá.",
+      reintentable: true,
+    };
+  }
   if (!paciente) {
     return { status: "error", error: "Paciente no encontrado.", reintentable: false };
   }

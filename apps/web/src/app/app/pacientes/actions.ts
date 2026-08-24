@@ -46,7 +46,14 @@ export async function crearPaciente(
   }
 
   const row = Array.isArray(data) ? data[0] : data;
-  revalidatePath("/app/pacientes");
+  if (!row?.token) {
+    console.error("[crearPaciente] invitar_paciente RPC no devolvió token:", data);
+    return {
+      status: "error",
+      error: "El paciente se creó pero no se pudo generar la invitación. Revisalo en el listado.",
+    };
+  }
 
+  revalidatePath("/app/pacientes");
   return { status: "success", token: row.token };
 }

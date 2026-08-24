@@ -18,6 +18,14 @@ import { PacientesFiltros } from "./pacientes-filtros";
 
 type Turno = { paciente_id: string; fecha_hora: string; created_at: string };
 
+/** PostgREST usa `,` y `()` como separadores dentro de la sintaxis de
+ * `.or()` — sin escapar, una búsqueda con coma o paréntesis (ej. "García,
+ * Juan") rompe el parseo del filtro. Envolver el valor en comillas dobles
+ * lo trata como literal; el `%` de ilike sigue funcionando igual adentro. */
+function valorFiltroPostgrest(valor: string): string {
+  return `"${valor.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+}
+
 export default async function PacientesPage(
   props: PageProps<"/app/pacientes">
 ) {
@@ -40,13 +48,16 @@ export default async function PacientesPage(
     );
   }
   if (q) {
-    query = query.or(`nombre.ilike.%${q}%,telefono.ilike.%${q}%`);
+    const term = valorFiltroPostgrest(`%${q}%`);
+    query = query.or(`nombre.ilike.${term},telefono.ilike.${term}`);
   }
 
-  const [{ data: pacientes }, alertaSinTurno] = await Promise.all([
-    query,
-    obtenerPacientesSinProximoTurno(supabase),
-  ]);
+  const [{ data: pacientes, error: pacientesError }, alertaSinTurno] =
+    await Promise.all([query, obtenerPacientesSinProximoTurno(supabase)]);
+
+  if (pacientesError) {
+    console.error("[PacientesPage] select de pacientes falló:", pacientesError);
+  }
 
   const ids = (pacientes ?? []).map((p) => p.id);
   const { data: turnos } = ids.length
