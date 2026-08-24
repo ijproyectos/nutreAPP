@@ -62,7 +62,7 @@ export default async function InvitacionPage(
             ? "El email de la invitación no coincide con la cuenta de Google que usaste. Iniciá sesión con el email al que te invitaron."
             : "El link puede estar vencido o ya usado. Pedile a tu nutricionista que te reenvíe la invitación."}
         </p>
-        <Button render={<Link href="/onboarding" />}>
+        <Button nativeButton={false} render={<Link href="/onboarding" />}>
           Ir a la pantalla de inicio
         </Button>
       </Card>

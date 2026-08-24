@@ -16,7 +16,9 @@ export default function AuthCodeErrorPage() {
           Hubo un problema al completar el inicio de sesión con Google.
           Intentá de nuevo.
         </p>
-        <Button render={<Link href="/login" />}>Reintentar</Button>
+        <Button nativeButton={false} render={<Link href="/login" />}>
+          Reintentar
+        </Button>
       </Card>
     </div>
   );
