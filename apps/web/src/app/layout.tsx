@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Lora } from "next/font/google";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -12,6 +12,13 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+// Serif para títulos ("Buenas noches, Paula Denise", logotype NutrIA) —
+// matchea las capturas del diseño original.
+const lora = Lora({
+  variable: "--font-lora",
+  subsets: ["latin"],
+});
+
 export const metadata: Metadata = {
   title: "NutrIA",
   description: "Gestión de consultorio para nutricionistas",
@@ -21,7 +28,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${lora.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
