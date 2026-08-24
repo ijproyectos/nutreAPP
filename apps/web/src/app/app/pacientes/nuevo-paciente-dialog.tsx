@@ -82,6 +82,11 @@ export function NuevoPacienteDialog() {
                 )}
               </Button>
             </div>
+            <p className="text-xs text-muted-foreground">
+              {state.emailEnviado
+                ? "También le mandamos un mail con este link."
+                : "No pudimos mandarle el mail automático — copiá el link y enviáselo vos."}
+            </p>
             <DialogFooter>
               <Button onClick={() => setOpen(false)}>Listo</Button>
             </DialogFooter>

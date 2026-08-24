@@ -14,6 +14,7 @@ import { formatoMoneda, tiempoRelativo, formatoFechaCorta } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { NuevoPacienteDialog } from "./pacientes/nuevo-paciente-dialog";
+import { RecordarTurnoButton } from "./recordar-turno-button";
 
 function saludo() {
   const hora = new Date().getHours();
@@ -36,6 +37,9 @@ type Alerta = {
   subtitulo: string;
   accionLabel: string;
   accionHref: string;
+  /** RF-042: cuando está presente, se renderiza un botón "recordar" por
+   * turno además del link genérico de la alerta. */
+  turnos?: { id: string; pacienteNombre: string }[];
 };
 
 const PRIORIDAD_ESTILO: Record<Prioridad, string> = {
@@ -113,6 +117,10 @@ export default async function BandejaDeHoyPage() {
         .join(" · "),
       accionLabel: "Ver agenda →",
       accionHref: "/app/agenda",
+      turnos: sinConfirmar.slice(0, 3).map((t) => ({
+        id: t.id,
+        pacienteNombre: t.pacienteNombre,
+      })),
     });
   }
 
@@ -199,6 +207,17 @@ export default async function BandejaDeHoyPage() {
                   <p className="text-sm text-muted-foreground">
                     {a.subtitulo}
                   </p>
+                  {a.turnos && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {a.turnos.map((t) => (
+                        <RecordarTurnoButton
+                          key={t.id}
+                          turnoId={t.id}
+                          pacienteNombre={t.pacienteNombre}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <Link
                   href={a.accionHref}
