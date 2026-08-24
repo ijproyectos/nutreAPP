@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { Sparkles, RotateCcw } from "lucide-react";
+import { Sparkles, RotateCcw, PenLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -9,12 +9,15 @@ import { tiempoRelativo } from "@/lib/format";
 import {
   generarPlanIA,
   guardarPlan,
+  crearPlanManual,
   type GenerarPlanState,
   type GuardarPlanState,
+  type CrearPlanManualState,
 } from "./planes-actions";
 
 const generarInicial: GenerarPlanState = { status: "idle" };
 const guardarInicial: GuardarPlanState = { status: "idle" };
+const crearManualInicial: CrearPlanManualState = { status: "idle" };
 
 type PlanActivo = {
   id: string;
@@ -40,7 +43,11 @@ export function PlanIAPanel({
     guardarPlan,
     guardarInicial
   );
+  const [crearManualState, crearManualAction, crearManualPending] =
+    useActionState(crearPlanManual, crearManualInicial);
   const [contenido, setContenido] = useState(planActivo?.contenido ?? "");
+  const [escribiendoManual, setEscribiendoManual] = useState(false);
+  const [contenidoManual, setContenidoManual] = useState("");
 
   if (!planActivo) {
     return (
@@ -48,20 +55,65 @@ export function PlanIAPanel({
         <p className="text-sm text-muted-foreground">
           Este paciente no tiene un plan en curso.
         </p>
-        <form action={generarAction} className="flex flex-col gap-2">
-          <input type="hidden" name="paciente_id" value={pacienteId} />
-          {generarState.status === "error" && (
-            <p className="text-sm text-destructive">{generarState.error}</p>
-          )}
-          <Button
-            type="submit"
-            disabled={generarPending}
-            className="w-fit gap-1.5"
-          >
-            <Sparkles className="size-4" />
-            {generarPending ? "Generando…" : "Generar plan con IA"}
-          </Button>
-        </form>
+
+        {!escribiendoManual ? (
+          <div className="flex flex-wrap gap-2">
+            <form action={generarAction}>
+              <input type="hidden" name="paciente_id" value={pacienteId} />
+              <Button
+                type="submit"
+                disabled={generarPending}
+                className="gap-1.5"
+              >
+                <Sparkles className="size-4" />
+                {generarPending ? "Generando…" : "Generar plan con IA"}
+              </Button>
+            </form>
+            <Button
+              type="button"
+              variant="outline"
+              className="gap-1.5"
+              onClick={() => setEscribiendoManual(true)}
+            >
+              <PenLine className="size-4" />
+              Escribir manualmente
+            </Button>
+          </div>
+        ) : (
+          <form action={crearManualAction} className="flex flex-col gap-3">
+            <input type="hidden" name="paciente_id" value={pacienteId} />
+            <Textarea
+              name="contenido"
+              value={contenidoManual}
+              onChange={(e) => setContenidoManual(e.target.value)}
+              rows={12}
+              placeholder="Escribí el plan acá — texto o markdown."
+              className="font-mono text-sm"
+              autoFocus
+            />
+            {crearManualState.status === "error" && (
+              <p className="text-sm text-destructive">
+                {crearManualState.error}
+              </p>
+            )}
+            <div className="flex gap-2">
+              <Button type="submit" disabled={crearManualPending}>
+                {crearManualPending ? "Creando…" : "Crear plan"}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setEscribiendoManual(false)}
+              >
+                Cancelar
+              </Button>
+            </div>
+          </form>
+        )}
+
+        {generarState.status === "error" && (
+          <p className="text-sm text-destructive">{generarState.error}</p>
+        )}
 
         {planesEnviados.length > 0 && (
           <PlanesEnviados planes={planesEnviados} />

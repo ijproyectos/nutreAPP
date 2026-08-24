@@ -83,6 +83,42 @@ export async function generarPlanIA(
   return { status: "success" };
 }
 
+export type CrearPlanManualState =
+  | { status: "idle" }
+  | { status: "error"; error: string }
+  | { status: "success" };
+
+/** RF-060: crear un plan desde cero, sin pasar por la IA. Nace
+ *  `editado_manual` directamente — nunca fue un borrador. */
+export async function crearPlanManual(
+  _prevState: CrearPlanManualState,
+  formData: FormData
+): Promise<CrearPlanManualState> {
+  const { supabase, profesional } = await getAuthorizedProfesional();
+
+  const pacienteId = String(formData.get("paciente_id") ?? "");
+  const contenido = String(formData.get("contenido") ?? "").trim();
+
+  if (!contenido) {
+    return { status: "error", error: "El plan no puede quedar vacío." };
+  }
+
+  const { error } = await supabase.from("planes").insert({
+    profesional_id: profesional.id,
+    paciente_id: pacienteId,
+    contenido,
+    estado: "editado_manual",
+    generado_con_ia: false,
+  });
+
+  if (error) {
+    return { status: "error", error: "No se pudo crear el plan. Intentá de nuevo." };
+  }
+
+  revalidatePath(`/app/pacientes/${pacienteId}`);
+  return { status: "success" };
+}
+
 export type GuardarPlanState =
   | { status: "idle" }
   | { status: "error"; error: string }

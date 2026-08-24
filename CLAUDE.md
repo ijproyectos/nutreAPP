@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project state
 
-**Fase 5: login probado en vivo + shell/dashboard/pacientes + laboratorios clínicos + generación de plan con IA, todo funcionando.** `apps/web/` es Next.js 16 (Turbopack, App Router) — build y lint limpios. shadcn/ui en estilo `base-nova` (`@base-ui/react`, no Radix — composición con `render` prop, no `asChild`).
+**Fase 6: todo lo de la Fase 5 (login en vivo, shell/dashboard/pacientes, laboratorios, plan con IA) + listo para deploy en Netlify.** `apps/web/` es Next.js 16 (Turbopack, App Router) — build y lint limpios. shadcn/ui en estilo `base-nova` (`@base-ui/react`, no Radix — composición con `render` prop, no `asChild`). `netlify.toml` en la raíz (mismo patrón monorepo de Raíces del Sur — `base = "apps/web"`, `publish = ".next"` explícito). Falta: crear el sitio en Netlify, conectar el repo de GitHub y cargar las 4 env vars ahí — eso es acción del usuario, no verificable desde acá.
 
 **Laboratorios clínicos** (agregado post-v1, no estaba en el PRD original — ver `docs/architecture.md` §9 y `docs/requirements.md` RF-084/085/090/091 para el detalle):
 - `supabase/migrations/004_laboratorios.sql` — tabla `laboratorios` + RLS + bucket privado de Storage (`laboratorios`) + policies de `storage.objects`. **Aplicada y verificada** (mismo mecanismo `psql`/pooler).
@@ -19,7 +19,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `src/lib/ai/generar-plan.ts` — único punto de contacto con la API de Anthropic (`@anthropic-ai/sdk`, `ANTHROPIC_API_KEY` en `.env.local`, `import "server-only"`). Modelo `claude-opus-5`. Usa `client.messages.parse()` con schema Zod (`output_config.format`) para forzar salida estructurada — nunca texto libre sin validar — y esa estructura se convierte a markdown antes de guardarse en `planes.contenido` (no hay columna jsonb paralela). **Verificado contra la API real** (no solo compilado): confirmé que el plan generado efectivamente ajusta según los valores de laboratorio pasados, no solo que la llamada no tira error.
 - `src/app/app/pacientes/[id]/planes-actions.ts` + `plan-ia-panel.tsx` — "Generar plan con IA" (usa el laboratorio **validado** más reciente, nunca uno pendiente/rechazado) → `borrador_ia`; el profesional edita el texto libremente y "Guardar borrador" (`editado_manual`) o "Enviar al paciente" (`enviado`, recién ahí lo ve el paciente). Ningún camino de código salta directo a `enviado` sin pasar por esta pantalla.
 - `src/app/portal/plan/page.tsx` — RF-061, el paciente ve su plan vigente (la policy RLS `planes_select_paciente` ya filtraba por `enviado_at is not null` desde antes de que existiera IA).
-- **Gap conocido, no bloqueante**: hoy el único camino para *crear* la primera versión de un plan es generarlo con IA — no hay un botón de "escribir un plan desde cero" sin pasar por la IA (RF-060 original). Si hace falta, es un formulario chico, no una feature grande.
+- Ya no hay gap: además de "Generar plan con IA", la ficha tiene "Escribir manualmente" (`crearPlanManual` en `planes-actions.ts`) — crea el plan directo en `editado_manual`, sin pasar por la IA (RF-060).
 
 **Paleta y tipografía ya son las del diseño real** (no un placeholder): sidebar violeta/ciruela oscuro (`--sidebar`), fondo crema (`--background`), acento naranja/coral (`--accent`, `--destructive` para prioridad ALTA), heading serif con Google Font Lora (`--font-heading`, aplicado a h1/h2/h3 vía `@layer base`) — todo en `globals.css`. Los valores se estimaron a ojo de las capturas (no hay extractor de color exacto) — si algo se ve desalineado con el diseño original, es candidato a ajuste fino, no a rediseño.
 
@@ -62,7 +62,7 @@ Doc completo: `docs/product.md`. Requisitos funcionales (RF-xxx): `docs/requirem
 
 ## Stack
 
-Next.js 16 (App Router, Turbopack) + TypeScript + Tailwind CSS 4 + shadcn/ui (`base-nova`) + Lucide icons, sobre Supabase (Postgres, Auth, Row Level Security — Storage recién en fase 2), hosted on Vercel. Validación con Zod + React Hook Form. Server Components para lectura; TanStack Query solo donde haga falta cache/mutación del lado del cliente (ej. chat).
+Next.js 16 (App Router, Turbopack) + TypeScript + Tailwind CSS 4 + shadcn/ui (`base-nova`) + Lucide icons, sobre Supabase (Postgres, Auth, Row Level Security, Storage — bucket privado `laboratorios` en uso desde v1) + Anthropic API (`claude-opus-5`), hosted on Netlify (`netlify.toml`). Validación con Zod + React Hook Form. Server Components para lectura; TanStack Query solo donde haga falta cache/mutación del lado del cliente (ej. chat).
 
 ## Running the app
 
@@ -87,4 +87,4 @@ npm run lint     # eslint
 
 - `supabase/migrations/001_initial_schema.sql`, `002_rls_policies.sql`, `003_rpc_funciones.sql` — escritas, **no aplicadas todavía** (no existe el proyecto Supabase). Aplicar en ese orden vía `psql` a través del session pooler cuando el proyecto exista (mismo mecanismo usado en Raíces del Sur — `db.<ref>.supabase.co` es IPv6-only e inalcanzable desde el sandbox, el pooler es el camino que funciona).
 - `supabase/seed.sql` — no siembra `profesionales`/`pacientes` reales (requieren un `auth.users.id` real de un login real); tiene un ejemplo comentado para poblar pacientes de prueba una vez que exista un profesional real.
-- Env vars (`.env.example`): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`. La service role key nunca se expone al frontend.
+- Env vars (`.env.example`): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `ANTHROPIC_API_KEY`. Ninguna de las dos últimas se expone al frontend.

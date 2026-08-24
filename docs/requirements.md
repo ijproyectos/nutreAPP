@@ -58,7 +58,7 @@ Lista de conversaciones por paciente (lado profesional) / conversación única c
 ## Planes alimentarios
 
 **RF-060 — Crear y enviar plan (texto)**
-El profesional escribe/edita el plan en texto/markdown y lo asocia a un paciente. `enviado_at` se setea al confirmar el envío — antes de eso es borrador, invisible para el paciente. **Estado real**: implementado como edición/envío (RF-063) desde la ficha del paciente, pero hoy el único camino para *crear* la primera versión de un plan es RF-062 (generar con IA) — no hay todavía un botón de "escribir un plan desde cero" sin pasar por la IA. Pendiente si hace falta.
+El profesional escribe/edita el plan en texto/markdown y lo asocia a un paciente. `enviado_at` se setea al confirmar el envío — antes de eso es borrador, invisible para el paciente. Implementado: en la ficha del paciente, "Escribir manualmente" crea el plan directo en `estado = 'editado_manual'` (sin pasar por la IA); a partir de ahí sigue el mismo flujo de edición/envío que RF-063.
 
 **RF-061 — Ver plan vigente (paciente)**
 El paciente ve el plan más reciente con `enviado_at` no nulo. Implementado en `/portal/plan`.

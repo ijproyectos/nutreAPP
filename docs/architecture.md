@@ -2,12 +2,13 @@
 
 ## 1. Stack
 
-- **Frontend + backend**: Next.js 16 (App Router, Turbopack), TypeScript, sobre Vercel.
+- **Frontend + backend**: Next.js 16 (App Router, Turbopack), TypeScript, sobre Netlify.
 - **Datos/Auth/Storage**: Supabase (Postgres administrado, Auth con Google OAuth, Row Level Security, Storage — bucket privado `laboratorios` en uso desde v1, ver §9; el resto de Storage — archivos de planes — sigue en fase 2). Realtime disponible para el chat si hace falta.
+- **IA**: Anthropic API (`claude-opus-5`) para el borrador de plan alimentario — ver §10.
 - **UI**: Tailwind CSS 4 + shadcn/ui (estilo `base-nova`, sobre `@base-ui/react`, no Radix — la composición trigger/select/dialog usa `render` prop en vez de `asChild`). Iconos Lucide.
 - **Validación/forms**: Zod + React Hook Form.
 - **Data fetching**: Server Components por default; TanStack Query solo donde haga falta cache/mutación del lado del cliente (ej. chat con polling).
-- **Deploy**: Vercel (frontend), GitHub Actions para CI (lint/typecheck/build) antes de merge a `main`.
+- **Deploy**: Netlify (`netlify.toml`, monorepo con `base = "apps/web"` — ver la nota del archivo sobre por qué `publish` se declara explícito), GitHub Actions para CI (lint/typecheck/build) antes de merge a `main`.
 
 Un solo Next.js app (`apps/web`), no hace falta monorepo real: el backend es Supabase, no hay servidor propio que orquestar.
 
@@ -79,7 +80,7 @@ Explicado con el porqué, para no reabrir la discusión sin motivo:
 
 | Ítem | Por qué se difiere |
 |---|---|
-| Cron de recordatorios automáticos | Requiere infraestructura de scheduling (Vercel Cron / `pg_cron`) separada del resto del flujo; v1 lo resuelve con un botón manual de "recordar" sobre la Bandeja de hoy. |
+| Cron de recordatorios automáticos | Requiere infraestructura de scheduling (Netlify Scheduled Functions / `pg_cron`) separada del resto del flujo; v1 lo resuelve con un botón manual de "recordar" sobre la Bandeja de hoy. |
 | Upload de archivo en planes (Storage) | Bucket + políticas RLS de Storage es una superficie de seguridad aparte; v1 usa texto/markdown, columna `archivo_url` ya reservada para cuando se sume. |
 | Cobro online (Mercado Pago/Stripe) | Fase 2 explícita del PRD; `lib/billing.ts` queda con un stub `crearLinkDePago()`. |
 | Importación CSV de pacientes | Solo alta manual en v1, menos superficie de validación/errores para la primera versión. |
@@ -90,13 +91,14 @@ Explicado con el porqué, para no reabrir la discusión sin motivo:
 
 | Capa | Recomendación |
 |---|---|
-| Frontend + backend | Next.js en Vercel |
+| Frontend + backend | Next.js en Netlify |
 | DB + Auth + Storage | Supabase |
+| IA | Anthropic API (`claude-opus-5`) |
 | Facturación SaaS (NutrIA → profesional) | Stripe Billing o Mercado Pago Suscripciones — fase 2, no en v1 |
 | Cobro paciente → profesional | Mercado Pago Checkout Pro — fase 2 |
 | Email transaccional | Resend o Postmark (invitaciones, recordatorios manuales) |
 | Monitoreo de errores | Sentry |
-| CI/CD | GitHub Actions (lint/typecheck/build) + deploy automático de Vercel |
+| CI/CD | GitHub Actions (lint/typecheck/build) + deploy automático de Netlify |
 
 ## 8. Variables de entorno
 
@@ -105,8 +107,9 @@ Explicado con el porqué, para no reabrir la discusión sin motivo:
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
+ANTHROPIC_API_KEY=
 ```
-La service role key nunca se expone al frontend — solo se usa server-side si hace falta (ej. un futuro job de recordatorios), nunca en un componente cliente ni en una ruta pública.
+La service role key nunca se expone al frontend — solo se usa server-side si hace falta (ej. un futuro job de recordatorios), nunca en un componente cliente ni en una ruta pública. Mismo criterio para `ANTHROPIC_API_KEY` — solo se lee en `src/lib/ai/generar-plan.ts`, que importa `"server-only"` justamente para que un import accidental desde un Client Component rompa el build en vez de filtrar la key al bundle.
 
 ## 9. Laboratorios clínicos
 
