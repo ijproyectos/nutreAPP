@@ -5,6 +5,7 @@ import { getAuthorizedProfesional } from "@/lib/dal";
 import { edadDesde, formatoFechaCorta } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { LaboratorioReviewCard } from "./laboratorio-review-card";
+import { PlanIAPanel } from "./plan-ia-panel";
 
 const ESTADO_ESTILO: Record<string, string> = {
   validado: "bg-emerald-100 text-emerald-800 border-transparent",
@@ -53,6 +54,25 @@ export default async function FichaPacientePage(
   const revisados = (laboratorios ?? []).filter(
     (l) => l.estado !== "pendiente_revision"
   );
+
+  const { data: planes } = await supabase
+    .from("planes")
+    .select("id, contenido, estado, generado_con_ia, enviado_at, created_at")
+    .eq("paciente_id", id)
+    .order("created_at", { ascending: false });
+
+  const planActivoRow = (planes ?? []).find((p) => p.estado !== "enviado");
+  const planActivo = planActivoRow
+    ? {
+        id: planActivoRow.id,
+        contenido: planActivoRow.contenido,
+        estado: planActivoRow.estado as "borrador_ia" | "editado_manual",
+        generado_con_ia: planActivoRow.generado_con_ia,
+      }
+    : null;
+  const planesEnviados = (planes ?? [])
+    .filter((p) => p.estado === "enviado" && p.enviado_at)
+    .map((p) => ({ id: p.id, enviado_at: p.enviado_at as string }));
 
   return (
     <div className="flex flex-col gap-6 p-6">
@@ -155,6 +175,15 @@ export default async function FichaPacientePage(
             })}
           </div>
         )}
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-lg font-semibold">Plan alimentario</h2>
+        <PlanIAPanel
+          pacienteId={paciente.id}
+          planActivo={planActivo}
+          planesEnviados={planesEnviados}
+        />
       </section>
     </div>
   );

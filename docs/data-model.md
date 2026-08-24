@@ -98,14 +98,19 @@ Insertable tanto por el profesional como por el propio paciente (autorregistro).
 ### `planes`
 MVP: contenido en texto plano/markdown. **Sin upload de archivo** (`archivo_url` queda como columna nullable preparada para fase 2, para no requerir bucket de Storage con políticas RLS todavía).
 
+Ampliada post-v1 para la generación de plan con IA (`docs/architecture.md` §10) — `estado`/`generado_con_ia`/`laboratorio_id`.
+
 | Campo | Tipo | Notas |
 |---|---|---|
 | id | uuid pk | |
 | profesional_id | uuid not null, FK profesionales | |
 | paciente_id | uuid not null, FK pacientes | |
-| contenido | text not null | texto/markdown del plan |
+| contenido | text not null | texto/markdown del plan — si vino de IA, es la salida estructurada ya convertida a markdown, no JSON crudo |
 | archivo_url | text, nullable | reservado para fase 2 (Storage) |
 | enviado_at | timestamptz, nullable | null = borrador, seteado = visible para el paciente |
+| estado | text not null | `borrador_ia` \| `editado_manual` \| `enviado`, default `editado_manual` (un plan creado a mano nace "editado" porque nunca pasó por un borrador) |
+| generado_con_ia | boolean not null | default `false` |
+| laboratorio_id | uuid, FK laboratorios, nullable | qué laboratorio validado se usó como input, si alguno — trazabilidad |
 | created_at | timestamptz | default now() |
 
 ### `cobros`

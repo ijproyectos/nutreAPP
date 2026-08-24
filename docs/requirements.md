@@ -58,10 +58,16 @@ Lista de conversaciones por paciente (lado profesional) / conversación única c
 ## Planes alimentarios
 
 **RF-060 — Crear y enviar plan (texto)**
-El profesional escribe/edita el plan en texto/markdown y lo asocia a un paciente. `enviado_at` se setea al confirmar el envío — antes de eso es borrador, invisible para el paciente.
+El profesional escribe/edita el plan en texto/markdown y lo asocia a un paciente. `enviado_at` se setea al confirmar el envío — antes de eso es borrador, invisible para el paciente. **Estado real**: implementado como edición/envío (RF-063) desde la ficha del paciente, pero hoy el único camino para *crear* la primera versión de un plan es RF-062 (generar con IA) — no hay todavía un botón de "escribir un plan desde cero" sin pasar por la IA. Pendiente si hace falta.
 
 **RF-061 — Ver plan vigente (paciente)**
-El paciente ve el plan más reciente con `enviado_at` no nulo.
+El paciente ve el plan más reciente con `enviado_at` no nulo. Implementado en `/portal/plan`.
+
+**RF-062 — Generar borrador de plan con IA**
+Desde la ficha del paciente: botón "Generar plan con IA" arma el prompt con datos del paciente, notas del profesional, última medición y el laboratorio **validado** más reciente (nunca uno pendiente/rechazado), y llama a la API de Anthropic (`claude-opus-5`) pidiendo salida estructurada (JSON validado contra schema, no texto libre). El resultado entra como `planes.estado = 'borrador_ia'`, `generado_con_ia = true` — invisible para el paciente hasta RF-063. Ver `docs/architecture.md` §10.
+
+**RF-063 — Editar y enviar el plan**
+El profesional edita libremente el contenido (texto) en la ficha del paciente. "Guardar borrador" → `estado = 'editado_manual'`. "Enviar al paciente" → `estado = 'enviado'`, `enviado_at = now()`, recién ahí lo ve el paciente. No existe ningún camino de código que envíe un plan generado por IA sin pasar por esta pantalla.
 
 ## Cobros
 
