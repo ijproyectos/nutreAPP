@@ -27,6 +27,27 @@ export function formatoFechaCorta(fecha: string | Date): string {
   }).format(d);
 }
 
+/** Para precargar un `<input type="date">` a partir de un timestamp ISO —
+ * usa getters locales (no UTC) a propósito: esto corre en el navegador del
+ * profesional, así que "local" es su zona horaria real, que es la que
+ * tiene que ver en el campo. Ver turno-form-dialog.tsx para el porqué la
+ * conversión inversa (form -> ISO) también se hace en el cliente. */
+export function paraInputFecha(iso: string): string {
+  const d = new Date(iso);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+/** Idem, para `<input type="time">`. */
+export function paraInputHora(iso: string): string {
+  const d = new Date(iso);
+  const h = String(d.getHours()).padStart(2, "0");
+  const min = String(d.getMinutes()).padStart(2, "0");
+  return `${h}:${min}`;
+}
+
 export function tiempoRelativo(fecha: string | Date): string {
   const d = typeof fecha === "string" ? new Date(fecha) : fecha;
   const segundos = Math.round((new Date().getTime() - d.getTime()) / 1000);

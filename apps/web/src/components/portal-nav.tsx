@@ -2,13 +2,22 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { FlaskConical, Home, LogOut, ClipboardList } from "lucide-react";
+import {
+  FlaskConical,
+  Home,
+  LogOut,
+  ClipboardList,
+  CalendarDays,
+  NotebookPen,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
   { href: "/portal", label: "Inicio", icon: Home },
+  { href: "/portal/turnos", label: "Mis turnos", icon: CalendarDays },
   { href: "/portal/plan", label: "Mi plan", icon: ClipboardList },
   { href: "/portal/laboratorios", label: "Laboratorios", icon: FlaskConical },
+  { href: "/portal/registro", label: "Registrar", icon: NotebookPen },
 ] as const;
 
 export function PortalNav() {

@@ -154,8 +154,8 @@ export default async function BandejaDeHoyPage() {
           <NuevoPacienteDialog />
           <Button
             variant="default"
-            disabled
-            title="La agenda todavía no está construida"
+            nativeButton={false}
+            render={<Link href="/app/agenda" />}
             className="gap-1.5"
           >
             <CalendarPlus className="size-4" />
