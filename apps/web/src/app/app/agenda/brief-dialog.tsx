@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -32,6 +32,13 @@ export function BriefDialog({
   pacienteNombre: string;
 }) {
   const [state, formAction, pending] = useActionState(registrarBrief, initialState);
+  // Controlados a propósito — mismo motivo que estado-turno-select.tsx y
+  // registro-form.tsx: un <form action={...}> resetea sus campos no
+  // controlados al terminar la transición de la action (React 19) incluso
+  // en el camino de error, y registrarBrief nunca lanza.
+  const [acordado, setAcordado] = useState("");
+  const [completo, setCompleto] = useState("");
+  const [cambio, setCambio] = useState("");
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -61,15 +68,33 @@ export function BriefDialog({
               <input type="hidden" name="paciente_id" value={pacienteId} />
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="acordado">Acordado</Label>
-                <Textarea id="acordado" name="acordado" rows={2} />
+                <Textarea
+                  id="acordado"
+                  name="acordado"
+                  rows={2}
+                  value={acordado}
+                  onChange={(e) => setAcordado(e.target.value)}
+                />
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="completo">Completó</Label>
-                <Textarea id="completo" name="completo" rows={2} />
+                <Textarea
+                  id="completo"
+                  name="completo"
+                  rows={2}
+                  value={completo}
+                  onChange={(e) => setCompleto(e.target.value)}
+                />
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="cambio">Cambió</Label>
-                <Textarea id="cambio" name="cambio" rows={2} />
+                <Textarea
+                  id="cambio"
+                  name="cambio"
+                  rows={2}
+                  value={cambio}
+                  onChange={(e) => setCambio(e.target.value)}
+                />
               </div>
               {state.status === "error" && (
                 <p className="text-sm text-destructive">{state.error}</p>

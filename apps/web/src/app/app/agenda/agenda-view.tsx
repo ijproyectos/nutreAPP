@@ -41,6 +41,10 @@ export function AgendaView({
   // Lazy init (función, no valor) para que abrir con ?paciente= no dependa
   // de un efecto — se decide una sola vez, en el primer render.
   const [crearAbierto, setCrearAbierto] = useState(() => Boolean(pacienteFijo));
+  // Estado propio (no la prop directo): así el botón genérico "Nuevo
+  // turno" puede limpiarlo para agendar a otro paciente sin que quede
+  // pegado al que vino por ?paciente= la primera vez.
+  const [pacienteFijoActivo, setPacienteFijoActivo] = useState(pacienteFijo);
   const [turnoEditando, setTurnoEditando] = useState<Turno | null>(null);
   const [turnoParaBrief, setTurnoParaBrief] = useState<Turno | null>(null);
 
@@ -72,7 +76,13 @@ export function AgendaView({
           }}
           className="rounded-xl border border-border bg-card"
         />
-        <Button className="gap-1.5" onClick={() => setCrearAbierto(true)}>
+        <Button
+          className="gap-1.5"
+          onClick={() => {
+            setPacienteFijoActivo(undefined);
+            setCrearAbierto(true);
+          }}
+        >
           <CalendarPlus className="size-4" />
           Nuevo turno
         </Button>
@@ -106,24 +116,31 @@ export function AgendaView({
         )}
       </div>
 
-      {/* key fuerza remount al cambiar qué turno se edita (o al pasar a
-          "crear") — mismo motivo que el key de HistoriaClinicaPanel/
+      {/* Montado condicionalmente (no solo `open` alternando) — el QA
+          encontró que dejarlo siempre montado hacía que useActionState
+          sobreviviera al cierre: al reabrir sin cambiar de turno (crear
+          dos turnos seguidos, o editar el mismo turno dos veces) quedaba
+          pegado en la pantalla de "Turno creado/actualizado" de la vez
+          anterior. El `key` sigue haciendo falta para cuando SÍ cambia
+          qué turno se edita, mismo motivo que HistoriaClinicaPanel/
           PlanIAPanel: el useState local de fecha/hora/tipo/notas solo se
           inicializa en el mount. */}
-      <TurnoFormDialog
-        key={turnoEditando?.id ?? "crear"}
-        open={crearAbierto || turnoEditando !== null}
-        onOpenChange={(next) => {
-          if (!next) {
-            setCrearAbierto(false);
-            setTurnoEditando(null);
-          }
-        }}
-        pacientes={pacientes}
-        fechaInicial={fechaSeleccionada}
-        turno={turnoEditando ?? undefined}
-        pacienteFijo={turnoEditando ? undefined : pacienteFijo}
-      />
+      {(crearAbierto || turnoEditando !== null) && (
+        <TurnoFormDialog
+          key={turnoEditando?.id ?? "crear"}
+          open
+          onOpenChange={(next) => {
+            if (!next) {
+              setCrearAbierto(false);
+              setTurnoEditando(null);
+            }
+          }}
+          pacientes={pacientes}
+          fechaInicial={fechaSeleccionada}
+          turno={turnoEditando ?? undefined}
+          pacienteFijo={turnoEditando ? undefined : pacienteFijoActivo}
+        />
+      )}
 
       {turnoParaBrief && (
         <BriefDialog
