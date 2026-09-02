@@ -157,6 +157,63 @@ export async function obtenerAgendaDeHoy(
   }));
 }
 
+export type PacienteSinRegistro = {
+  id: string;
+  nombre: string;
+  diasSinRegistro: number;
+  ultimaActividad: string | null;
+};
+
+/** Alerta de prioridad informativa (RF-040 mockup "Alta de paciente"):
+ *  pacientes activos, dados de alta hace más de 7 días, sin registrar
+ *  comida en `registros_comida` en los últimos 7 días (o nunca). Antes
+ *  excluida a propósito porque esa tabla no existía — ya se escribe desde
+ *  `/portal/registro` (RF-081), así que el dato es real. */
+export async function obtenerPacientesSinRegistrarComida(
+  supabase: Client
+): Promise<PacienteSinRegistro[]> {
+  const haceSieteDias = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+  const { data: activos } = await supabase
+    .from("pacientes")
+    .select("id, nombre, created_at")
+    .eq("estado", "activo")
+    .lte("created_at", haceSieteDias.toISOString());
+
+  const pacientes = activos ?? [];
+  if (pacientes.length === 0) return [];
+
+  const ids = pacientes.map((p) => p.id);
+  const { data: registros } = await supabase
+    .from("registros_comida")
+    .select("paciente_id, fecha")
+    .in("paciente_id", ids);
+
+  const ultimaPorPaciente = new Map<string, string>();
+  for (const r of registros ?? []) {
+    const actual = ultimaPorPaciente.get(r.paciente_id);
+    if (!actual || r.fecha > actual) ultimaPorPaciente.set(r.paciente_id, r.fecha);
+  }
+
+  const ahora = Date.now();
+  const sinRegistro: PacienteSinRegistro[] = [];
+  for (const p of pacientes) {
+    const ultima = ultimaPorPaciente.get(p.id) ?? null;
+    const desde = ultima ? new Date(ultima) : new Date(p.created_at);
+    if (desde.getTime() > haceSieteDias.getTime()) continue;
+
+    const dias = Math.floor((ahora - desde.getTime()) / (1000 * 60 * 60 * 24));
+    sinRegistro.push({
+      id: p.id,
+      nombre: p.nombre,
+      diasSinRegistro: dias,
+      ultimaActividad: ultima,
+    });
+  }
+
+  return sinRegistro.sort((a, b) => b.diasSinRegistro - a.diasSinRegistro);
+}
+
 export type ActividadReciente = {
   tipo: "medicion" | "plan" | "turno";
   descripcion: string;

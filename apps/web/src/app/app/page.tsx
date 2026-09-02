@@ -9,6 +9,7 @@ import {
   obtenerContinuidad,
   obtenerAgendaDeHoy,
   obtenerActividadReciente,
+  obtenerPacientesSinRegistrarComida,
 } from "@/lib/queries/dashboard";
 import { formatoMoneda, tiempoRelativo, formatoFechaCorta } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
@@ -29,7 +30,7 @@ const ESTADO_LABEL: Record<string, string> = {
   en_curso: "En curso",
 };
 
-type Prioridad = "ALTA" | "MEDIA";
+type Prioridad = "ALTA" | "MEDIA" | "INFO";
 
 type Alerta = {
   prioridad: Prioridad;
@@ -45,6 +46,7 @@ type Alerta = {
 const PRIORIDAD_ESTILO: Record<Prioridad, string> = {
   ALTA: "text-destructive",
   MEDIA: "text-accent-foreground",
+  INFO: "text-muted-foreground",
 };
 
 export default async function BandejaDeHoyPage() {
@@ -58,6 +60,7 @@ export default async function BandejaDeHoyPage() {
     agenda,
     actividad,
     laboratoriosPendientes,
+    sinRegistrarComida,
   ] = await Promise.all([
     obtenerPacientesSinProximoTurno(supabase),
     obtenerTurnosSinConfirmar(supabase),
@@ -66,6 +69,7 @@ export default async function BandejaDeHoyPage() {
     obtenerAgendaDeHoy(supabase),
     obtenerActividadReciente(supabase),
     obtenerLaboratoriosPendientesLargos(supabase),
+    obtenerPacientesSinRegistrarComida(supabase),
   ]);
 
   const alertas: Alerta[] = [];
@@ -139,6 +143,19 @@ export default async function BandejaDeHoyPage() {
     });
   }
 
+  if (sinRegistrarComida.length > 0) {
+    const primero = sinRegistrarComida[0];
+    alertas.push({
+      prioridad: "INFO",
+      titulo: `${primero.nombre} lleva ${primero.diasSinRegistro} días sin registrar comidas`,
+      subtitulo: primero.ultimaActividad
+        ? `Última actividad ${formatoFechaCorta(primero.ultimaActividad)}`
+        : "Sin actividad desde el alta",
+      accionLabel: "Ver ficha →",
+      accionHref: `/app/pacientes/${primero.id}`,
+    });
+  }
+
   return (
     <div className="flex flex-col gap-5 p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -197,12 +214,14 @@ export default async function BandejaDeHoyPage() {
                 }`}
               >
                 <div>
-                  <p
-                    className={`flex items-center gap-1.5 text-xs font-medium tracking-wide ${PRIORIDAD_ESTILO[a.prioridad]}`}
-                  >
-                    <span className="size-1.5 rounded-full bg-current" />
-                    {a.prioridad}
-                  </p>
+                  {a.prioridad !== "INFO" && (
+                    <p
+                      className={`flex items-center gap-1.5 text-xs font-medium tracking-wide ${PRIORIDAD_ESTILO[a.prioridad]}`}
+                    >
+                      <span className="size-1.5 rounded-full bg-current" />
+                      {a.prioridad}
+                    </p>
+                  )}
                   <p className="font-medium">{a.titulo}</p>
                   <p className="text-sm text-muted-foreground">
                     {a.subtitulo}
