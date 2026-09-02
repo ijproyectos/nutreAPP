@@ -8,6 +8,7 @@ import {
   LogOut,
   ClipboardList,
   CalendarDays,
+  MessageSquare,
   NotebookPen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -18,6 +19,7 @@ const NAV_ITEMS = [
   { href: "/portal/plan", label: "Mi plan", icon: ClipboardList },
   { href: "/portal/laboratorios", label: "Laboratorios", icon: FlaskConical },
   { href: "/portal/registro", label: "Registrar", icon: NotebookPen },
+  { href: "/portal/chat", label: "Chat", icon: MessageSquare },
 ] as const;
 
 export function PortalNav() {

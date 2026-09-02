@@ -1,10 +1,26 @@
-import { Proximamente } from "@/components/proximamente";
+import { getAuthorizedProfesional } from "@/lib/dal";
+import { obtenerConversaciones } from "@/lib/queries/chats";
+import { QueryProvider } from "./query-provider";
+import { ChatsView } from "./chats-view";
 
-export default function ChatsPage() {
+export default async function ChatsPage() {
+  const { supabase } = await getAuthorizedProfesional();
+
+  const [conversaciones, { data: pacientes }] = await Promise.all([
+    obtenerConversaciones(supabase),
+    supabase
+      .from("pacientes")
+      .select("id, nombre")
+      .eq("estado", "activo")
+      .order("nombre", { ascending: true }),
+  ]);
+
   return (
-    <Proximamente
-      titulo="Chats"
-      descripcion="La mensajería con pacientes (RF-050) todavía no está construida."
-    />
+    <QueryProvider>
+      <ChatsView
+        conversacionesIniciales={conversaciones}
+        pacientesDisponibles={pacientes ?? []}
+      />
+    </QueryProvider>
   );
 }
