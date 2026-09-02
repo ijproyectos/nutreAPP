@@ -22,21 +22,41 @@ const MAX_BYTES = 15 * 1024 * 1024;
 export async function obtenerConversacionesPaciente(): Promise<ConversacionPaciente[]> {
   const { supabase, paciente } = await getAuthorizedPaciente();
 
-  const { data: profesional } = await supabase
+  const { data: profesional, error: profesionalError } = await supabase
     .from("profesionales")
     .select("nombre")
     .eq("id", paciente.profesional_id)
     .maybeSingle();
+  if (profesionalError) {
+    console.error(
+      "[obtenerConversacionesPaciente] select de profesionales falló:",
+      profesionalError
+    );
+  }
 
-  const { data: grupoIds } = await supabase
+  const { data: grupoIds, error: grupoIdsError } = await supabase
     .from("chat_grupo_miembros")
     .select("grupo_id")
     .eq("paciente_id", paciente.id);
+  if (grupoIdsError) {
+    console.error(
+      "[obtenerConversacionesPaciente] select de chat_grupo_miembros falló:",
+      grupoIdsError
+    );
+  }
 
   const idsGrupos = (grupoIds ?? []).map((g) => g.grupo_id as string);
-  const { data: grupos } = idsGrupos.length
-    ? await supabase.from("chat_grupos").select("id, nombre").in("id", idsGrupos)
-    : { data: [] as { id: string; nombre: string }[] };
+  let grupos: { id: string; nombre: string }[] = [];
+  if (idsGrupos.length) {
+    const { data, error: gruposError } = await supabase
+      .from("chat_grupos")
+      .select("id, nombre")
+      .in("id", idsGrupos);
+    if (gruposError) {
+      console.error("[obtenerConversacionesPaciente] select de chat_grupos falló:", gruposError);
+    }
+    grupos = data ?? [];
+  }
 
   const [{ data: msjPaciente }, { data: msjGrupo }] = await Promise.all([
     supabase
@@ -211,6 +231,20 @@ export async function enviarMensajePaciente(
 
   if (error) {
     console.error("[enviarMensajePaciente] insert falló:", error);
+    if (archivoUrl) {
+      // Mismo criterio que enviarMensaje (app/chats/actions.ts): no dejar
+      // el archivo huérfano en Storage si el insert falla después de
+      // subirlo. Best-effort, no cambia la respuesta si falla el borrado.
+      const { error: cleanupError } = await supabase.storage
+        .from("chat-adjuntos")
+        .remove([archivoUrl]);
+      if (cleanupError) {
+        console.error(
+          "[enviarMensajePaciente] limpieza de archivo huérfano falló:",
+          cleanupError
+        );
+      }
+    }
     return { status: "error", error: "No se pudo enviar el mensaje. Intentá de nuevo." };
   }
 

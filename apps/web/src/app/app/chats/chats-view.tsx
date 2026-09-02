@@ -80,6 +80,12 @@ export function ChatsView({
     return conversaciones.filter((c) => c.nombre.toLowerCase().includes(q));
   }, [conversaciones, busqueda]);
 
+  // Handler manual (await directo) en vez de useActionState + <form
+  // action={fn}>, mismo motivo que NuevoGrupoDialog: acá hace falta
+  // limpiar el input/adjunto e invalidar las queries de TanStack Query
+  // justo cuando la action resuelve con éxito — hacerlo desde un
+  // useEffect que observe el resultado de useActionState dispara el
+  // lint de React (setState síncrono en un efecto).
   async function handleEnviar(e: FormEvent) {
     e.preventDefault();
     if (!destino || (!texto.trim() && !archivo)) return;

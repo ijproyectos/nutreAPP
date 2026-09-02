@@ -24,13 +24,22 @@ export type Conversacion = {
 export async function obtenerConversaciones(
   supabase: Client
 ): Promise<Conversacion[]> {
-  const [{ data: pacientes }, { data: grupos }] = await Promise.all([
+  const [
+    { data: pacientes, error: pacientesError },
+    { data: grupos, error: gruposError },
+  ] = await Promise.all([
     supabase
       .from("pacientes")
       .select("id, nombre")
       .eq("estado", "activo"),
     supabase.from("chat_grupos").select("id, nombre"),
   ]);
+  if (pacientesError) {
+    console.error("[obtenerConversaciones] select de pacientes falló:", pacientesError);
+  }
+  if (gruposError) {
+    console.error("[obtenerConversaciones] select de chat_grupos falló:", gruposError);
+  }
 
   const pacienteIds = (pacientes ?? []).map((p) => p.id as string);
   const grupoIds = (grupos ?? []).map((g) => g.id as string);

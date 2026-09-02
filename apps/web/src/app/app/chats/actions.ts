@@ -167,6 +167,18 @@ export async function enviarMensaje(
 
   if (error) {
     console.error("[enviarMensaje] insert falló:", error);
+    if (archivoUrl) {
+      // El archivo ya se subió a Storage antes de este insert — si el
+      // insert falla, no dejarlo huérfano en el bucket. Best-effort: si
+      // el borrado también falla, se loguea pero no cambia la respuesta
+      // (el usuario ya ve el error real, que es "no se pudo enviar").
+      const { error: cleanupError } = await supabase.storage
+        .from("chat-adjuntos")
+        .remove([archivoUrl]);
+      if (cleanupError) {
+        console.error("[enviarMensaje] limpieza de archivo huérfano falló:", cleanupError);
+      }
+    }
     return { status: "error", error: "No se pudo enviar el mensaje. Intentá de nuevo." };
   }
 

@@ -61,6 +61,10 @@ export function ChatViewPaciente({
     (c) => c.tipo === destino.tipo && c.id === destino.id
   );
 
+  // Mismo criterio que ChatsView (app/chats/chats-view.tsx): handler
+  // manual en vez de useActionState + useEffect, para poder limpiar el
+  // input/adjunto e invalidar las queries en el mismo evento que el
+  // envío, sin el lint de "setState síncrono en un efecto".
   async function handleEnviar(e: FormEvent) {
     e.preventDefault();
     if (!texto.trim() && !archivo) return;
