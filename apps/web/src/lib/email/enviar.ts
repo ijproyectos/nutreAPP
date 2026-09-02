@@ -3,7 +3,7 @@ import { Resend } from "resend";
 
 // Email transaccional: recordatorio manual de turno (RF-042). La
 // invitación (RF-020) se manda por WhatsApp ahora — ver
-// pacientes/nuevo-paciente-dialog.tsx — no por acá. Mismo criterio que
+// pacientes/nuevo/alta-paciente-view.tsx — no por acá. Mismo criterio que
 // src/lib/laboratorios/parsear.ts: nunca lanza. Un mail que no sale no
 // puede tumbar el flujo de recordatorio, así que todo error queda
 // logueado y se devuelve como { enviado: false } para que el caller

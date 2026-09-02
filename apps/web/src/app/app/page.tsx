@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, CalendarPlus } from "lucide-react";
+import { ArrowRight, CalendarPlus, UserPlus } from "lucide-react";
 import { getAuthorizedProfesional } from "@/lib/dal";
 import { obtenerPacientesSinProximoTurno } from "@/lib/queries/pacientes";
 import { obtenerLaboratoriosPendientesLargos } from "@/lib/queries/laboratorios";
@@ -14,7 +14,6 @@ import {
 import { formatoMoneda, tiempoRelativo, formatoFechaCorta } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { NuevoPacienteDialog } from "./pacientes/nuevo-paciente-dialog";
 import { RecordarTurnoButton } from "./recordar-turno-button";
 
 function saludo() {
@@ -168,7 +167,18 @@ export default async function BandejaDeHoyPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <NuevoPacienteDialog />
+          <Button variant="outline" disabled title="Próximamente">
+            Compartir
+          </Button>
+          <Button
+            variant="outline"
+            nativeButton={false}
+            render={<Link href="/app/pacientes/nuevo" />}
+            className="gap-1.5"
+          >
+            <UserPlus className="size-4" />
+            Nuevo paciente
+          </Button>
           <Button
             variant="default"
             nativeButton={false}

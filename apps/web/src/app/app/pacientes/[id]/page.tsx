@@ -1,12 +1,32 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Check } from "lucide-react";
 import { getAuthorizedProfesional } from "@/lib/dal";
 import { edadDesde, formatoFechaCorta } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { LaboratorioReviewCard } from "./laboratorio-review-card";
 import { PlanIAPanel } from "./plan-ia-panel";
 import { HistoriaClinicaPanel } from "./historia-clinica-panel";
+import { PedirSeccionButton } from "./pedir-seccion-button";
+import type { Seccion } from "@/app/onboarding/invitacion/[token]/wizard-actions";
+
+const SECCIONES_PERFIL: { key: Seccion; label: string; detalle: string }[] = [
+  { key: "datos_personales", label: "Datos personales", detalle: "Nombre, nacimiento, sexo biológico" },
+  { key: "contacto", label: "Contacto", detalle: "Teléfono y WhatsApp confirmados" },
+  { key: "antecedentes", label: "Antecedentes de salud", detalle: "Condiciones, alergias, medicación" },
+  { key: "habitos", label: "Hábitos y actividad", detalle: "Comidas, quién cocina, movimiento" },
+  { key: "consentimiento", label: "Consentimiento", detalle: "Uso de datos clínicos" },
+];
+
+const EVENTO_DESCRIPCION: Record<string, string> = {
+  enviado_whatsapp: "Se envió el link por WhatsApp",
+  abierto: "Abrió el link",
+};
+
+const SECCION_LABEL: Record<string, string> = Object.fromEntries(
+  SECCIONES_PERFIL.map((s) => [s.key, s.label])
+);
 
 const ESTADO_ESTILO: Record<string, string> = {
   validado: "bg-emerald-100 text-emerald-800 border-transparent",
@@ -27,7 +47,10 @@ export default async function FichaPacientePage(
   const { data: paciente, error: pacienteError } = await supabase
     .from("pacientes")
     .select(
-      "id, nombre, telefono, email, fecha_nacimiento, estado, notas_generales"
+      `id, nombre, telefono, email, fecha_nacimiento, estado, notas_generales,
+       datos_personales_completado_at, contacto_completado_at,
+       antecedentes_completado_at, habitos_completado_at,
+       consentimiento_completado_at`
     )
     .eq("id", id)
     .maybeSingle();
@@ -47,6 +70,33 @@ export default async function FichaPacientePage(
     throw new Error("No se pudo cargar la ficha del paciente.");
   }
   if (!paciente) notFound();
+
+  // Completitud del perfil + "Actividad del link" (mockup "En la ficha",
+  // ver 008/009). La invitación más reciente es la relevante — un
+  // paciente solo tiene una activa/aceptada a la vez en la práctica.
+  const { data: invitacion } = await supabase
+    .from("invitaciones")
+    .select("id, token")
+    .eq("paciente_id", id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const { data: eventosInvitacion } = invitacion
+    ? await supabase
+        .from("invitacion_eventos")
+        .select("tipo, seccion, created_at")
+        .eq("invitacion_id", invitacion.id)
+        .order("created_at", { ascending: false })
+        .limit(8)
+    : { data: null };
+
+  const headersList = await headers();
+  const host = headersList.get("host") ?? "nutriar.netlify.app";
+  const origin = host.startsWith("localhost") ? `http://${host}` : `https://${host}`;
+  const linkInvitacion = invitacion
+    ? `${origin}/onboarding/invitacion/${invitacion.token}`
+    : null;
 
   const { data: mediciones } = await supabase
     .from("mediciones")
@@ -103,6 +153,26 @@ export default async function FichaPacientePage(
     .filter((p) => p.estado === "enviado" && p.enviado_at)
     .map((p) => ({ id: p.id, enviado_at: p.enviado_at as string }));
 
+  const completadoAtPorSeccion: Record<Seccion, string | null> = {
+    datos_personales: paciente.datos_personales_completado_at,
+    contacto: paciente.contacto_completado_at,
+    antecedentes: paciente.antecedentes_completado_at,
+    habitos: paciente.habitos_completado_at,
+    consentimiento: paciente.consentimiento_completado_at,
+  };
+  const seccionesCompletitud = SECCIONES_PERFIL.map((s) => ({
+    ...s,
+    completadoAt: completadoAtPorSeccion[s.key],
+  }));
+  const seccionesPendientes = seccionesCompletitud.filter(
+    (s) => !s.completadoAt
+  );
+  const porcentajeCompletitud = Math.round(
+    ((SECCIONES_PERFIL.length - seccionesPendientes.length) /
+      SECCIONES_PERFIL.length) *
+      100
+  );
+
   return (
     <div className="flex flex-col gap-6 p-6">
       <div>
@@ -126,6 +196,130 @@ export default async function FichaPacientePage(
           {paciente.telefono || "sin teléfono"} · {paciente.email}
         </p>
       </div>
+
+      {invitacion && (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-lg font-semibold">Completitud del perfil</h2>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            <div className="rounded-xl border border-border bg-card p-5 lg:col-span-2">
+              <div className="mb-4 flex items-baseline justify-between">
+                <span className="text-3xl font-bold text-primary">
+                  {porcentajeCompletitud}%
+                </span>
+                <span className="text-sm text-muted-foreground">
+                  {seccionesPendientes.length === 0
+                    ? "Perfil completo."
+                    : `Falta ${seccionesPendientes.length} de ${SECCIONES_PERFIL.length} secciones. Lo que respondió ya está en la ficha.`}
+                </span>
+              </div>
+              <div className="mb-4 flex gap-1">
+                {seccionesCompletitud.map((s) => (
+                  <div
+                    key={s.key}
+                    className={`h-1.5 flex-1 rounded-full ${
+                      s.completadoAt ? "bg-primary" : "bg-muted"
+                    }`}
+                  />
+                ))}
+              </div>
+              <div className="flex flex-col divide-y divide-border">
+                {seccionesCompletitud.map((s) => (
+                  <div
+                    key={s.key}
+                    className={`flex items-center justify-between gap-3 py-3 ${
+                      !s.completadoAt ? "border-l-2 border-l-destructive pl-3" : ""
+                    }`}
+                  >
+                    <div className="flex items-start gap-2.5">
+                      <span
+                        className={`mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full ${
+                          s.completadoAt
+                            ? "bg-primary text-primary-foreground"
+                            : "border border-input"
+                        }`}
+                      >
+                        {s.completadoAt && <Check className="size-3" />}
+                      </span>
+                      <div>
+                        <p className="font-medium">{s.label}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {s.completadoAt
+                            ? formatoFechaCorta(s.completadoAt)
+                            : s.detalle}
+                        </p>
+                      </div>
+                    </div>
+                    {!s.completadoAt && linkInvitacion && (
+                      <PedirSeccionButton
+                        token={invitacion.token}
+                        telefono={paciente.telefono}
+                        link={linkInvitacion}
+                        texto={`Hola ${paciente.nombre}! Nos falta ${s.label.toLowerCase()} para completar tu perfil en NutrIA:`}
+                        label="Pedir"
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-4">
+              {seccionesPendientes.length > 0 && linkInvitacion && (
+                <div className="rounded-xl border border-border bg-card p-5">
+                  <p className="mb-2 text-xs font-medium tracking-wide text-muted-foreground">
+                    PEDIR LO QUE FALTA
+                  </p>
+                  <p className="mb-3 text-sm text-muted-foreground">
+                    El link abre directo en lo que falta. No vuelve a
+                    preguntar lo que ya respondió.
+                  </p>
+                  <div className="mb-3 flex flex-wrap gap-1.5">
+                    {seccionesPendientes.map((s) => (
+                      <Badge key={s.key} variant="outline">
+                        {s.label}
+                      </Badge>
+                    ))}
+                  </div>
+                  <PedirSeccionButton
+                    token={invitacion.token}
+                    telefono={paciente.telefono}
+                    link={linkInvitacion}
+                    texto={`Hola ${paciente.nombre}! Te dejo el link para terminar de completar tu perfil en NutrIA:`}
+                    label="Reenviar solo lo pendiente"
+                    variant="default"
+                  />
+                </div>
+              )}
+
+              {eventosInvitacion && eventosInvitacion.length > 0 && (
+                <div className="rounded-xl border border-border bg-card p-5">
+                  <p className="mb-3 text-xs font-medium tracking-wide text-muted-foreground">
+                    ACTIVIDAD DEL LINK
+                  </p>
+                  <ul className="flex flex-col gap-2.5">
+                    {eventosInvitacion.map((e, i) => (
+                      <li
+                        key={i}
+                        className="flex items-start justify-between gap-3 text-sm"
+                      >
+                        <span className="flex items-start gap-2">
+                          <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-accent-foreground" />
+                          {e.tipo === "seccion_completada"
+                            ? `Completó ${(SECCION_LABEL[e.seccion ?? ""] ?? e.seccion)?.toLowerCase()}`
+                            : (EVENTO_DESCRIPCION[e.tipo] ?? e.tipo)}
+                        </span>
+                        <span className="shrink-0 text-xs text-muted-foreground">
+                          {formatoFechaCorta(e.created_at)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
 
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold">Historia clínica</h2>

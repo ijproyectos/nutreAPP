@@ -11,9 +11,9 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table";
+import { UserPlus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { NuevoPacienteDialog } from "./nuevo-paciente-dialog";
 import { PacientesFiltros } from "./pacientes-filtros";
 
 type Turno = { paciente_id: string; fecha_hora: string; created_at: string };
@@ -110,7 +110,15 @@ export default async function PacientesPage(
           <Button variant="outline" disabled title="Próximamente">
             Importar pacientes
           </Button>
-          <NuevoPacienteDialog />
+          <Button
+            variant="default"
+            nativeButton={false}
+            render={<Link href="/app/pacientes/nuevo" />}
+            className="gap-1.5"
+          >
+            <UserPlus className="size-4" />
+            Nuevo paciente
+          </Button>
         </div>
       </div>
 
