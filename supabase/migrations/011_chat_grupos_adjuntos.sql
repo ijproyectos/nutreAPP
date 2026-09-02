@@ -20,7 +20,25 @@ create table chat_grupos (
 
 create index idx_chat_grupos_profesional on chat_grupos(profesional_id);
 
+create table chat_grupo_miembros (
+  grupo_id uuid not null references chat_grupos(id) on delete cascade,
+  paciente_id uuid not null references pacientes(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (grupo_id, paciente_id)
+);
+
+create index idx_chat_grupo_miembros_paciente on chat_grupo_miembros(paciente_id);
+
+-- RLS y policies de ambas tablas van DESPUÉS de crear las dos — la policy
+-- de "miembro" de chat_grupos referencia chat_grupo_miembros y viceversa,
+-- así que ninguna de las dos puede tener su policy completa hasta que
+-- exista la otra tabla. (Bug real de la v1 de este archivo: la corrida
+-- original creaba las policies de chat_grupos intercaladas con la tabla
+-- chat_grupo_miembros y rompía acá — psql sin transacción explícita ya
+-- había commiteado chat_grupos + 1 policy antes de fallar; se limpió con
+-- un DROP TABLE chat_grupos antes de reaplicar esta versión corregida.)
 alter table chat_grupos enable row level security;
+alter table chat_grupo_miembros enable row level security;
 
 create policy chat_grupos_select_profesional on chat_grupos
   for select using (profesional_id = auth_profesional_id());
@@ -35,17 +53,6 @@ create policy chat_grupos_select_miembro on chat_grupos
 
 create policy chat_grupos_insert_profesional on chat_grupos
   for insert with check (profesional_id = auth_profesional_id());
-
-create table chat_grupo_miembros (
-  grupo_id uuid not null references chat_grupos(id) on delete cascade,
-  paciente_id uuid not null references pacientes(id) on delete cascade,
-  created_at timestamptz not null default now(),
-  primary key (grupo_id, paciente_id)
-);
-
-create index idx_chat_grupo_miembros_paciente on chat_grupo_miembros(paciente_id);
-
-alter table chat_grupo_miembros enable row level security;
 
 -- Nota de alcance (grupo real, no un broadcast disfrazado): los
 -- miembros de un mismo grupo se ven entre sí — es la semántica esperada
