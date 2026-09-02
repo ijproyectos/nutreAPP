@@ -144,12 +144,15 @@ export default async function BandejaDeHoyPage() {
 
   if (sinRegistrarComida.length > 0) {
     const primero = sinRegistrarComida[0];
+    const resto = sinRegistrarComida.length - 1;
     alertas.push({
       prioridad: "INFO",
       titulo: `${primero.nombre} lleva ${primero.diasSinRegistro} días sin registrar comidas`,
-      subtitulo: primero.ultimaActividad
-        ? `Última actividad ${formatoFechaCorta(primero.ultimaActividad)}`
-        : "Sin actividad desde el alta",
+      subtitulo:
+        (primero.ultimaActividad
+          ? `Última actividad ${formatoFechaCorta(primero.ultimaActividad)}`
+          : "Sin actividad desde el alta") +
+        (resto > 0 ? ` · +${resto} más` : ""),
       accionLabel: "Ver ficha →",
       accionHref: `/app/pacientes/${primero.id}`,
     });

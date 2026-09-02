@@ -53,8 +53,18 @@ export function AltaPacienteView({
   const [state, formAction, pending] = useActionState(crearPaciente, initialState);
   const [copied, setCopied] = useState(false);
   const [nombre, setNombre] = useState("");
+  const [email, setEmail] = useState("");
   const [telefono, setTelefono] = useState("");
   const [camposVisibles, setCamposVisibles] = useState<Set<string>>(new Set());
+  // Igual que nombre/telefono: todo campo dentro de <form action={fn}>
+  // tiene que ser controlado, no defaultValue/no controlado — React 19
+  // resetea los campos no controlados al terminar la transición de la
+  // action, incluso en un resultado de error (crearPaciente nunca lanza,
+  // así que ese reset no se puede esquivar devolviendo un error). Mismo
+  // gotcha que ya mordió en el módulo de Agenda, ver CLAUDE.md.
+  const [camposOpcionalesValores, setCamposOpcionalesValores] = useState<
+    Record<string, string>
+  >({});
 
   const inviteLink =
     state.status === "success" ? `${origin}/onboarding/invitacion/${state.token}` : null;
@@ -196,6 +206,8 @@ export function AltaPacienteView({
                     id="email"
                     name="email"
                     type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     placeholder="jonatan@gmail.com"
                     required
                   />
@@ -245,7 +257,17 @@ export function AltaPacienteView({
                       {CAMPOS_OPCIONALES.filter((c) => camposVisibles.has(c.key)).map((c) => (
                         <div key={c.key} className="flex flex-col gap-1.5">
                           <Label htmlFor={c.key}>{c.label}</Label>
-                          <Input id={c.key} name={c.key} />
+                          <Input
+                            id={c.key}
+                            name={c.key}
+                            value={camposOpcionalesValores[c.key] ?? ""}
+                            onChange={(e) =>
+                              setCamposOpcionalesValores((prev) => ({
+                                ...prev,
+                                [c.key]: e.target.value,
+                              }))
+                            }
+                          />
                         </div>
                       ))}
                     </div>

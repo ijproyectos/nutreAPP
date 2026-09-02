@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -75,12 +75,19 @@ export function PerfilWizard({
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  if (seccionesPendientes.length === 0) {
-    // No debería renderizarse — page.tsx redirige a /portal cuando no hay
-    // secciones pendientes. Defensivo por si el estado quedó desalineado.
-    router.replace("/portal");
-    return null;
-  }
+  const sinPendientes = seccionesPendientes.length === 0;
+
+  // No debería renderizarse — page.tsx redirige a /portal cuando no hay
+  // secciones pendientes. Defensivo por si el estado quedó desalineado.
+  // useEffect, no una llamada directa en el cuerpo del componente: React
+  // no permite disparar una navegación como side effect durante el
+  // render de otro componente (warning de "Cannot update a component
+  // while rendering a different component").
+  useEffect(() => {
+    if (sinPendientes) router.replace("/portal");
+  }, [sinPendientes, router]);
+
+  if (sinPendientes) return null;
 
   const seccion = seccionesPendientes[pasoIdx];
   const numeroGlobal = ORDEN.indexOf(seccion) + 1;
