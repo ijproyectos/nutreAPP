@@ -54,7 +54,12 @@ export async function actualizarCuenta(
   }
 
   revalidatePath("/app/configuracion/cuenta");
-  revalidatePath("/app"); // el saludo y el avatar del sidebar leen profesional.nombre
+  // "layout", no el default "page": el sidebar que muestra
+  // profesional.nombre/avatar vive en app-shell.tsx, renderizado por
+  // app/app/layout.tsx, no por la página /app en sí. El default "page"
+  // hoy igual lo refresca por un comportamiento de Next 16 documentado
+  // como temporal (revalidatePath.md) — esto no depende de eso.
+  revalidatePath("/app", "layout");
   return { status: "success" };
 }
 
@@ -108,11 +113,27 @@ async function subirArchivoPerfil(
 
   if (updateError) {
     console.error(`[subirArchivoPerfil:${tipo}] update falló:`, updateError);
+    // Mismo criterio que enviarMensaje/enviarMensajePaciente (módulo de
+    // Chat): si el update que referencia el archivo falla justo después
+    // de subirlo, no dejarlo huérfano — best-effort, no cambia la
+    // respuesta si el borrado también falla. Distinto del trade-off ya
+    // aceptado de "reemplazo deja el archivo viejo huérfano" (ver
+    // 012_configuracion_cuenta.sql): acá el archivo nuevo nunca llegó a
+    // quedar referenciado por ninguna fila.
+    const { error: cleanupError } = await supabase.storage
+      .from("profesional-archivos")
+      .remove([path]);
+    if (cleanupError) {
+      console.error(
+        `[subirArchivoPerfil:${tipo}] limpieza de archivo huérfano falló:`,
+        cleanupError
+      );
+    }
     return { status: "error", error: "La imagen se subió pero no se pudo guardar. Intentá de nuevo." };
   }
 
   revalidatePath("/app/configuracion/cuenta");
-  revalidatePath("/app");
+  revalidatePath("/app", "layout");
   return { status: "success", url: path };
 }
 

@@ -1,6 +1,12 @@
 "use client";
 
-import { useActionState, useRef, useState, type KeyboardEvent } from "react";
+import {
+  startTransition,
+  useActionState,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from "react";
 import { Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,7 +52,13 @@ function SubirArchivo({ accion, label }: { accion: typeof subirAvatar; label: st
           if (!archivo) return;
           const fd = new FormData();
           fd.set("archivo", archivo);
-          formAction(fd);
+          // startTransition, no una llamada directa: el dispatcher de
+          // useActionState fuera de una transición no marca `pending`
+          // (React exige `ReactSharedInternals.T` seteado para eso) y
+          // tira un console.error ("called outside of a transition") en
+          // cada subida — confirmado contra el runtime de React 19
+          // instalado, no es un nitpick teórico.
+          startTransition(() => formAction(fd));
         }}
       />
       <Button
