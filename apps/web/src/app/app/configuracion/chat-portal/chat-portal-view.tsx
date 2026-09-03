@@ -1,0 +1,47 @@
+"use client";
+
+import { useActionState, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { actualizarChatPortal, type ActualizarChatPortalState } from "./actions";
+
+const initialState: ActualizarChatPortalState = { status: "idle" };
+
+export function ChatPortalView({ mensajeInicial }: { mensajeInicial: string }) {
+  const [state, formAction, pending] = useActionState(actualizarChatPortal, initialState);
+  const [mensaje, setMensaje] = useState(mensajeInicial);
+
+  return (
+    <div className="max-w-xl rounded-xl border border-border bg-card p-5">
+      <h2 className="text-lg font-semibold">Chat del portal</h2>
+      <p className="mb-4 text-sm text-muted-foreground">
+        Mensaje que ve un paciente la primera vez que abre su chat 1:1,
+        antes de que exista ningún mensaje todavía.
+      </p>
+
+      <form action={formAction} className="flex flex-col gap-4">
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="mensaje_bienvenida_chat">Mensaje de bienvenida</Label>
+          <Textarea
+            id="mensaje_bienvenida_chat"
+            name="mensaje_bienvenida_chat"
+            rows={3}
+            value={mensaje}
+            onChange={(e) => setMensaje(e.target.value)}
+            placeholder="Hola! Este es tu chat directo conmigo — cualquier duda, escribime acá."
+          />
+        </div>
+
+        {state.status === "error" && (
+          <p className="text-sm text-destructive">{state.error}</p>
+        )}
+        {state.status === "success" && <p className="text-sm text-primary">Guardado.</p>}
+
+        <Button type="submit" disabled={pending} className="w-fit">
+          {pending ? "Guardando…" : "Guardar cambios"}
+        </Button>
+      </form>
+    </div>
+  );
+}

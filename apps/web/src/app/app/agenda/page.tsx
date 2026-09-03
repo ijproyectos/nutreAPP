@@ -7,7 +7,7 @@ import { AgendaView } from "./agenda-view";
 // entera). El filtrado por día seleccionado se hace en el cliente
 // (agenda-view.tsx) sobre este mismo array, sin ida y vuelta al server.
 export default async function AgendaPage(props: PageProps<"/app/agenda">) {
-  const { supabase } = await getAuthorizedProfesional();
+  const { supabase, profesional } = await getAuthorizedProfesional();
   const searchParams = await props.searchParams;
   const pacienteIdFijo = (searchParams?.paciente as string | undefined) || null;
 
@@ -16,7 +16,7 @@ export default async function AgendaPage(props: PageProps<"/app/agenda">) {
   const hasta = new Date();
   hasta.setDate(hasta.getDate() + 120);
 
-  const [{ data: turnos }, { data: pacientes }] = await Promise.all([
+  const [{ data: turnos }, { data: pacientes }, { data: preferencias }] = await Promise.all([
     supabase
       .from("turnos")
       .select("id, fecha_hora, tipo, estado, notas, pacientes(id, nombre)")
@@ -28,6 +28,12 @@ export default async function AgendaPage(props: PageProps<"/app/agenda">) {
       .select("id, nombre")
       .eq("estado", "activo")
       .order("nombre", { ascending: true }),
+    // Configuración → Mi agenda (013_configuracion_consultorio.sql).
+    supabase
+      .from("profesionales")
+      .select("tipo_turno_default")
+      .eq("id", profesional.id)
+      .maybeSingle(),
   ]);
 
   const turnosNormalizados = (turnos ?? []).map((t) => {
@@ -64,6 +70,10 @@ export default async function AgendaPage(props: PageProps<"/app/agenda">) {
         turnos={turnosNormalizados}
         pacientes={pacientesOpciones}
         pacienteFijo={pacienteFijo}
+        tipoTurnoDefault={
+          (preferencias?.tipo_turno_default as "presencial" | "videollamada" | null) ??
+          "presencial"
+        }
       />
     </div>
   );

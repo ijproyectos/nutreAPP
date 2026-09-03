@@ -36,7 +36,8 @@ export const GRUPOS_CONFIGURACION: {
       {
         slug: "notificaciones",
         label: "Notificaciones y app",
-        descripcion: "Preferencias de notificaciones por email.",
+        descripcion:
+          "No hay ningún envío automático/programado en el proyecto (el único email es el recordatorio manual de turno, RF-042) — una preferencia acá no tendría nada real que controlar todavía.",
       },
     ],
   },
@@ -79,7 +80,8 @@ export const GRUPOS_CONFIGURACION: {
       {
         slug: "cobros",
         label: "Cobros",
-        descripcion: "Moneda y métodos de cobro — relacionado con el módulo de Cobros, hoy stub.",
+        descripcion:
+          "El registro manual y el reporte de por cobrar ya están construidos (RF-070/071, ver /app/cobros). Esta sección sería moneda/métodos de cobro — no hay nada en el código que hoy use una moneda distinta a pesos argentinos ni infraestructura de pago más allá de lo manual, así que agregar el ajuste tocaría formatoMoneda en varios lugares para una preferencia sin consumidor real todavía.",
       },
       {
         slug: "plantillas-certificados",

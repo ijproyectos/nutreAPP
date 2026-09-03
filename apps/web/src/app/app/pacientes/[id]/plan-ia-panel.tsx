@@ -30,10 +30,14 @@ export function PlanIAPanel({
   pacienteId,
   planActivo,
   planesEnviados,
+  plantillaPlanDefault,
 }: {
   pacienteId: string;
   planActivo: PlanActivo | null;
   planesEnviados: { id: string; enviado_at: string }[];
+  /** Configuración → Planes alimentarios. Precarga "Escribir
+   * manualmente" — el profesional la sigue pudiendo borrar/editar. */
+  plantillaPlanDefault: string;
 }) {
   const [generarState, generarAction, generarPending] = useActionState(
     generarPlanIA,
@@ -47,7 +51,7 @@ export function PlanIAPanel({
     useActionState(crearPlanManual, crearManualInicial);
   const [contenido, setContenido] = useState(planActivo?.contenido ?? "");
   const [escribiendoManual, setEscribiendoManual] = useState(false);
-  const [contenidoManual, setContenidoManual] = useState("");
+  const [contenidoManual, setContenidoManual] = useState(plantillaPlanDefault);
 
   if (!planActivo) {
     return (

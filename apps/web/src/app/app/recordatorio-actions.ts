@@ -16,18 +16,26 @@ export async function recordarTurno(
   _prevState: RecordarTurnoState,
   formData: FormData
 ): Promise<RecordarTurnoState> {
-  const { supabase } = await getAuthorizedProfesional();
+  const { supabase, profesional } = await getAuthorizedProfesional();
 
   const turnoId = String(formData.get("turno_id") ?? "");
   if (!turnoId) {
     return { status: "error", error: "Falta el turno." };
   }
 
-  const { data: turno, error } = await supabase
-    .from("turnos")
-    .select("fecha_hora, pacientes(nombre, email)")
-    .eq("id", turnoId)
-    .single();
+  const [{ data: turno, error }, { data: preferencias }] = await Promise.all([
+    supabase
+      .from("turnos")
+      .select("fecha_hora, pacientes(nombre, email)")
+      .eq("id", turnoId)
+      .single(),
+    // Configuración → Comunicación (013_configuracion_consultorio.sql).
+    supabase
+      .from("profesionales")
+      .select("plantilla_recordatorio_email")
+      .eq("id", profesional.id)
+      .maybeSingle(),
+  ]);
 
   if (error || !turno) {
     return { status: "error", error: "No se encontró el turno." };
@@ -46,6 +54,7 @@ export async function recordarTurno(
     email: paciente.email,
     nombrePaciente: paciente.nombre,
     fechaHora: turno.fecha_hora,
+    plantilla: preferencias?.plantilla_recordatorio_email,
   });
 
   if (!resultado.enviado) {

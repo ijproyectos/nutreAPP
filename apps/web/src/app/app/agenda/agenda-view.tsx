@@ -30,12 +30,16 @@ export function AgendaView({
   turnos,
   pacientes,
   pacienteFijo,
+  tipoTurnoDefault,
 }: {
   turnos: Turno[];
   pacientes: PacienteOpcion[];
   /** Viene de /app/agenda?paciente=<id> (link "Agendar" en el listado de
    * Pacientes) — abre directo el diálogo de crear con el paciente puesto. */
   pacienteFijo?: PacienteOpcion;
+  /** Configuración → Mi agenda. Solo aplica al crear (no pisa el tipo ya
+   * cargado al editar un turno existente). */
+  tipoTurnoDefault: "presencial" | "videollamada";
 }) {
   const [fechaSeleccionada, setFechaSeleccionada] = useState(() => new Date());
   // Lazy init (función, no valor) para que abrir con ?paciente= no dependa
@@ -139,6 +143,7 @@ export function AgendaView({
           fechaInicial={fechaSeleccionada}
           turno={turnoEditando ?? undefined}
           pacienteFijo={turnoEditando ? undefined : pacienteFijoActivo}
+          tipoDefault={tipoTurnoDefault}
         />
       )}
 

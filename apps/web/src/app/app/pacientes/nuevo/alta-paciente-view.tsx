@@ -30,24 +30,42 @@ const SECCIONES_LINK = [
 
 const SEGUNDOS_TOTAL = SECCIONES_LINK.reduce((sum, s) => sum + s.segundos, 0);
 
-function whatsappHref(telefono: string, nombre: string, profesionalNombre: string, link: string) {
-  const texto = encodeURIComponent(
-    `Hola ${nombre || ""}! Soy ${profesionalNombre}. Antes de que nos veamos, contame contacto, antecedentes de salud y hábitos y actividad — son ${Math.round(SEGUNDOS_TOTAL / 60)} minutos y así aprovechamos toda la consulta: ${link}`
-  );
+/** Texto base — usado por whatsappHref/el preview "Le llega esto" salvo
+ * que el profesional haya cargado una plantilla propia en Configuración
+ * → Comunicación (`profesionales.plantilla_invitacion_whatsapp`,
+ * placeholders `{nombre}`/`{profesional}`). */
+function textoInvitacion(
+  nombre: string,
+  profesionalNombre: string,
+  plantilla: string | null | undefined
+) {
+  if (plantilla) {
+    return plantilla
+      .replaceAll("{nombre}", nombre || "")
+      .replaceAll("{profesional}", profesionalNombre);
+  }
+  return `Hola ${nombre || ""}! Soy ${profesionalNombre}. Antes de que nos veamos, contame contacto, antecedentes de salud y hábitos y actividad — son ${Math.round(SEGUNDOS_TOTAL / 60)} minutos y así aprovechamos toda la consulta.`;
+}
+
+function whatsappHref(telefono: string, texto: string, link: string) {
+  const mensaje = encodeURIComponent(`${texto} ${link}`);
   const numero = telefono.replace(/[^\d]/g, "");
   return numero
-    ? `https://wa.me/${numero}?text=${texto}`
-    : `https://api.whatsapp.com/send?text=${texto}`;
+    ? `https://wa.me/${numero}?text=${mensaje}`
+    : `https://api.whatsapp.com/send?text=${mensaje}`;
 }
 
 export function AltaPacienteView({
   profesionalNombre,
   profesionalConsultorio,
   origin,
+  plantillaInvitacion,
 }: {
   profesionalNombre: string;
   profesionalConsultorio: string | null;
   origin: string;
+  /** Configuración → Comunicación. */
+  plantillaInvitacion: string | null;
 }) {
   const [tab, setTab] = useState("cargo-yo");
   const [state, formAction, pending] = useActionState(crearPaciente, initialState);
@@ -135,7 +153,11 @@ export function AltaPacienteView({
                     nativeButton={false}
                     render={
                       <a
-                        href={whatsappHref(telefono, nombre, profesionalNombre, inviteLink ?? "")}
+                        href={whatsappHref(
+                          telefono,
+                          textoInvitacion(nombre, profesionalNombre, plantillaInvitacion),
+                          inviteLink ?? ""
+                        )}
                         target="_blank"
                         rel="noreferrer"
                         onClick={() => {
@@ -324,10 +346,7 @@ export function AltaPacienteView({
                 LE LLEGA ESTO
               </p>
               <p className="mb-3 rounded-lg bg-card p-3 text-sm">
-                Hola {nombre || "[nombre]"}! Soy {profesionalNombre}. Antes de
-                que nos veamos, contame contacto, antecedentes de salud y
-                hábitos y actividad — son {Math.round(SEGUNDOS_TOTAL / 60)}{" "}
-                minutos y así aprovechamos toda la consulta.
+                {textoInvitacion(nombre || "[nombre]", profesionalNombre, plantillaInvitacion)}
               </p>
               <p className="truncate text-xs text-primary underline">
                 {inviteLink ?? "Se genera al crear el paciente"}

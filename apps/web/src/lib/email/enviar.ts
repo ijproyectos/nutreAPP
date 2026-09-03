@@ -50,6 +50,9 @@ export async function enviarRecordatorioTurno(params: {
   email: string;
   nombrePaciente: string;
   fechaHora: string;
+  /** Configuración → Comunicación (`profesionales.plantilla_recordatorio_email`).
+   * Placeholders `{nombre}`/`{fecha}` — si no viene, el texto de siempre. */
+  plantilla?: string | null;
 }): Promise<ResultadoEnvio> {
   const fecha = new Date(params.fechaHora).toLocaleString("es-AR", {
     weekday: "long",
@@ -59,10 +62,16 @@ export async function enviarRecordatorioTurno(params: {
     minute: "2-digit",
   });
 
+  const cuerpo = params.plantilla
+    ? params.plantilla
+        .replaceAll("{nombre}", params.nombrePaciente)
+        .replaceAll("{fecha}", fecha)
+    : `Te recordamos tu turno del ${fecha}. Si todavía no lo confirmaste, respondé este mail o avisale a tu nutricionista.`;
+
   return enviar({
     to: params.email,
     subject: "Recordatorio de tu turno",
     html: `<p>Hola ${params.nombrePaciente},</p>
-<p>Te recordamos tu turno del ${fecha}. Si todavía no lo confirmaste, respondé este mail o avisale a tu nutricionista.</p>`,
+<p>${cuerpo}</p>`,
   });
 }

@@ -42,7 +42,7 @@ export default async function FichaPacientePage(
   props: PageProps<"/app/pacientes/[id]">
 ) {
   const { id } = await props.params;
-  const { supabase } = await getAuthorizedProfesional();
+  const { supabase, profesional } = await getAuthorizedProfesional();
 
   const { data: paciente, error: pacienteError } = await supabase
     .from("pacientes")
@@ -139,6 +139,13 @@ export default async function FichaPacientePage(
     .select("id, contenido, estado, generado_con_ia, enviado_at, created_at")
     .eq("paciente_id", id)
     .order("created_at", { ascending: false });
+
+  // Configuración → Planes alimentarios (013_configuracion_consultorio.sql).
+  const { data: preferenciasPlan } = await supabase
+    .from("profesionales")
+    .select("plantilla_plan_alimentario")
+    .eq("id", profesional.id)
+    .maybeSingle();
 
   const planActivoRow = (planes ?? []).find((p) => p.estado !== "enviado");
   const planActivo = planActivoRow
@@ -439,6 +446,7 @@ export default async function FichaPacientePage(
           pacienteId={paciente.id}
           planActivo={planActivo}
           planesEnviados={planesEnviados}
+          plantillaPlanDefault={preferenciasPlan?.plantilla_plan_alimentario ?? ""}
         />
       </section>
     </div>

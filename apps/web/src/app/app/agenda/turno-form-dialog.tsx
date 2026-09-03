@@ -36,6 +36,7 @@ export function TurnoFormDialog({
   fechaInicial,
   turno,
   pacienteFijo,
+  tipoDefault,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -46,6 +47,8 @@ export function TurnoFormDialog({
   turno?: TurnoParaEditar;
   /** Crear ya con el paciente fijo (ej. desde el listado de Pacientes). */
   pacienteFijo?: PacienteOpcion;
+  /** Configuración → Mi agenda. Solo aplica en modo "crear". */
+  tipoDefault: "presencial" | "videollamada";
 }) {
   const accion = turno ? editarTurno : crearTurno;
   const [state, formAction, pending] = useActionState(accion, initialState);
@@ -59,7 +62,7 @@ export function TurnoFormDialog({
   );
   const [hora, setHora] = useState(turno ? paraInputHora(turno.fechaHora) : "");
   const [tipo, setTipo] = useState<"presencial" | "videollamada">(
-    turno?.tipo ?? "presencial"
+    turno?.tipo ?? tipoDefault
   );
   const [notas, setNotas] = useState(turno?.notas ?? "");
 

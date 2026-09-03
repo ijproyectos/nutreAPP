@@ -27,9 +27,14 @@ function iniciales(nombre: string) {
 export function ChatViewPaciente({
   pacienteId,
   conversacionesIniciales,
+  mensajeBienvenida,
 }: {
   pacienteId: string;
   conversacionesIniciales: ConversacionPaciente[];
+  /** Configuración → Chat del portal. Solo se muestra en la conversación
+   * 1:1 vacía — un grupo vacío sigue con el texto genérico, no tiene
+   * sentido un "mensaje de bienvenida" por grupo acá. */
+  mensajeBienvenida: string | null;
 }) {
   const queryClient = useQueryClient();
   const [destino, setDestino] = useState<Destino>({ tipo: "paciente", id: pacienteId });
@@ -146,7 +151,9 @@ export function ChatViewPaciente({
         <div className="flex flex-1 flex-col gap-3 overflow-y-auto p-4">
           {mensajes.length === 0 && (
             <p className="py-8 text-center text-sm text-muted-foreground">
-              Todavía no hay mensajes acá — escribile a tu nutricionista.
+              {destino.tipo === "paciente" && mensajeBienvenida
+                ? mensajeBienvenida
+                : "Todavía no hay mensajes acá — escribile a tu nutricionista."}
             </p>
           )}
           {mensajes.map((m) => (

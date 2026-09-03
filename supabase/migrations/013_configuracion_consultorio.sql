@@ -49,8 +49,11 @@ create policy obras_sociales_all_self on obras_sociales
 -- (ver CLAUDE.md por dónde se lee cada una) + el catálogo de
 -- composición corporal (sin wire-up a Historia Clínica todavía).
 -- =========================================================
+-- No se agregó "duración de turno por defecto": `turnos` no tiene una
+-- columna de duración (solo `fecha_hora` puntual, ver 001), así que no
+-- habría nada real que ese campo precargara — se dejó afuera en vez de
+-- guardar una preferencia decorativa sin consumidor.
 alter table profesionales
-  add column duracion_turno_default_minutos int,
   add column tipo_turno_default text check (tipo_turno_default in ('presencial', 'videollamada')),
   add column plantilla_invitacion_whatsapp text,
   add column plantilla_recordatorio_email text,
