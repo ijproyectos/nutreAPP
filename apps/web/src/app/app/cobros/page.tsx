@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { NuevoCobroDialog } from "./nuevo-cobro-dialog";
 import { MarcarCobradoButton } from "./marcar-cobrado-button";
 import { CobrosFiltros } from "./cobros-filtros";
+import { CobrosTabs } from "./cobros-tabs";
 
 const ESTADO_ESTILO: Record<string, string> = {
   pendiente: "border-transparent bg-accent text-accent-foreground",
@@ -55,6 +56,8 @@ export default async function CobrosPage(props: PageProps<"/app/cobros">) {
         </div>
         <NuevoCobroDialog pacientes={pacientes ?? []} />
       </div>
+
+      <CobrosTabs activa="cobros" />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="rounded-xl border border-border bg-card p-5">

@@ -107,8 +107,12 @@ export const GRUPOS_CONFIGURACION: {
       {
         slug: "suscripcion",
         label: "Suscripción",
+        // Tiene pantalla real (ver app/configuracion/suscripcion/page.tsx)
+        // — muestra el plan actual (profesionales.plan_id, real). No es
+        // un stub del catch-all, esta descripción queda solo como
+        // documentación del porqué no hay más que eso todavía.
         descripcion:
-          "Plan y facturación de NutrIA — no hay integración de cobro online en el proyecto (lib/billing.ts sigue siendo un stub) ni planes/precios definidos en ningún doc. Necesita una definición de producto antes de construirse.",
+          "Tu plan de NutrIA — no hay integración de cobro online (lib/billing.ts sigue siendo un stub) ni planes pagos/precios definidos en ningún doc, así que solo muestra el plan actual. Necesita una definición de producto antes de sumar más.",
       },
       {
         slug: "exportar-datos",

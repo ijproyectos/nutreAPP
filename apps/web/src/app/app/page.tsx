@@ -4,6 +4,7 @@ import { getAuthorizedProfesional } from "@/lib/dal";
 import { obtenerPacientesSinProximoTurno } from "@/lib/queries/pacientes";
 import { obtenerLaboratoriosPendientesLargos } from "@/lib/queries/laboratorios";
 import { obtenerResumenCobros } from "@/lib/queries/cobros";
+import { contarSuscripcionesVencidas } from "@/lib/queries/suscripciones";
 import {
   obtenerTurnosSinConfirmar,
   obtenerContinuidad,
@@ -60,6 +61,7 @@ export default async function BandejaDeHoyPage() {
     actividad,
     laboratoriosPendientes,
     sinRegistrarComida,
+    suscripcionesVencidas,
   ] = await Promise.all([
     obtenerPacientesSinProximoTurno(supabase),
     obtenerTurnosSinConfirmar(supabase),
@@ -69,6 +71,7 @@ export default async function BandejaDeHoyPage() {
     obtenerActividadReciente(supabase),
     obtenerLaboratoriosPendientesLargos(supabase),
     obtenerPacientesSinRegistrarComida(supabase),
+    contarSuscripcionesVencidas(supabase),
   ]);
 
   const alertas: Alerta[] = [];
@@ -155,6 +158,16 @@ export default async function BandejaDeHoyPage() {
         (resto > 0 ? ` · +${resto} más` : ""),
       accionLabel: "Ver ficha →",
       accionHref: `/app/pacientes/${primero.id}`,
+    });
+  }
+
+  if (suscripcionesVencidas > 0) {
+    alertas.push({
+      prioridad: "MEDIA",
+      titulo: `${suscripcionesVencidas} suscripción${suscripcionesVencidas === 1 ? "" : "es"} venci${suscripcionesVencidas === 1 ? "ó" : "eron"} sin generar el cobro`,
+      subtitulo: "Cobro recurrente a pacientes, seguimiento manual.",
+      accionLabel: "Ver suscripciones →",
+      accionHref: "/app/cobros/suscripciones",
     });
   }
 
