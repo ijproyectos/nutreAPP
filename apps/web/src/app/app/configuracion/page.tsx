@@ -1,10 +1,5 @@
-import { Proximamente } from "@/components/proximamente";
+import { redirect } from "next/navigation";
 
-export default function ConfiguracionPage() {
-  return (
-    <Proximamente
-      titulo="Configuración"
-      descripcion="Datos del consultorio, disponibilidad para turnos e integraciones todavía no están construidos."
-    />
-  );
+export default function ConfiguracionIndexPage() {
+  redirect("/app/configuracion/cuenta");
 }
