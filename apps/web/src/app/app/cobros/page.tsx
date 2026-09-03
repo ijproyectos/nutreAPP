@@ -31,7 +31,7 @@ export default async function CobrosPage(props: PageProps<"/app/cobros">) {
   const estado =
     estadoParam === "pendiente" || estadoParam === "cobrado" ? estadoParam : undefined;
 
-  const [cobros, resumen, { data: pacientes }] = await Promise.all([
+  const [cobros, resumen, { data: pacientes, error: pacientesError }] = await Promise.all([
     obtenerCobros(supabase, estado),
     obtenerResumenCobros(supabase),
     supabase
@@ -40,6 +40,9 @@ export default async function CobrosPage(props: PageProps<"/app/cobros">) {
       .eq("estado", "activo")
       .order("nombre", { ascending: true }),
   ]);
+  if (pacientesError) {
+    console.error("[CobrosPage] select de pacientes falló:", pacientesError);
+  }
 
   return (
     <div className="flex flex-col gap-5 p-6">
