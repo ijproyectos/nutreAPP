@@ -32,40 +32,6 @@ export async function obtenerTurnosSinConfirmar(
   }));
 }
 
-export type ResumenCobros = {
-  totalPendiente: number;
-  cantidadPendiente: number;
-  masAntiguo: { pacienteNombre: string; fecha: string } | null;
-};
-
-/** RF-041: $ por cobrar = suma de cobros con estado 'pendiente'. */
-export async function obtenerResumenCobros(
-  supabase: Client
-): Promise<ResumenCobros> {
-  const { data } = await supabase
-    .from("cobros")
-    .select("monto, fecha_vencimiento, created_at, pacientes(nombre)")
-    .eq("estado", "pendiente")
-    .order("created_at", { ascending: true });
-
-  const filas = data ?? [];
-  const totalPendiente = filas.reduce((sum, c) => sum + Number(c.monto), 0);
-  const primero = filas[0];
-
-  return {
-    totalPendiente,
-    cantidadPendiente: filas.length,
-    masAntiguo: primero
-      ? {
-          pacienteNombre:
-            (primero.pacientes as unknown as { nombre: string } | null)
-              ?.nombre ?? "Paciente",
-          fecha: primero.fecha_vencimiento ?? primero.created_at,
-        }
-      : null,
-  };
-}
-
 /** RF-041: % continuidad = activos con próximo turno / total activos. */
 export async function obtenerContinuidad(
   supabase: Client

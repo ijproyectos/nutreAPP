@@ -3,9 +3,9 @@ import { ArrowRight, CalendarPlus, UserPlus } from "lucide-react";
 import { getAuthorizedProfesional } from "@/lib/dal";
 import { obtenerPacientesSinProximoTurno } from "@/lib/queries/pacientes";
 import { obtenerLaboratoriosPendientesLargos } from "@/lib/queries/laboratorios";
+import { obtenerResumenCobros } from "@/lib/queries/cobros";
 import {
   obtenerTurnosSinConfirmar,
-  obtenerResumenCobros,
   obtenerContinuidad,
   obtenerAgendaDeHoy,
   obtenerActividadReciente,
