@@ -3,23 +3,6 @@
 import { revalidatePath } from "next/cache";
 import { getAuthorizedProfesional } from "@/lib/dal";
 
-type Frecuencia = "semanal" | "quincenal" | "mensual";
-
-/** Avanza una fecha (YYYY-MM-DD) según la frecuencia — usa componentes
- * UTC (`Date.UTC`) para no correr un día por la zona horaria del server
- * (Netlify corre en UTC, mismo motivo que ya documenta turno-form-dialog.tsx
- * para fecha/hora de turnos, acá con fechas puras sin hora es más simple
- * pero el riesgo de "correrse un día" es el mismo si se usa el
- * constructor de Date local). */
-function avanzarFecha(fecha: string, frecuencia: Frecuencia): string {
-  const [y, m, d] = fecha.split("-").map(Number);
-  const date = new Date(Date.UTC(y, m - 1, d));
-  if (frecuencia === "semanal") date.setUTCDate(date.getUTCDate() + 7);
-  else if (frecuencia === "quincenal") date.setUTCDate(date.getUTCDate() + 15);
-  else date.setUTCMonth(date.getUTCMonth() + 1);
-  return date.toISOString().slice(0, 10);
-}
-
 // =========================================================
 // planes_suscripcion — CRUD simple, mismo patrón que sedes/obras_sociales.
 // =========================================================
@@ -130,6 +113,23 @@ export async function crearSuscripcion(
     .maybeSingle();
   if (!planPropio) return { status: "error", error: "Plan inválido." };
 
+  // Hallazgo del pre-commit-orchestrator: sin este chequeo, dos clicks
+  // accidentales en "Nueva suscripción" para el mismo paciente/plan
+  // crean dos filas independientes, cada una con su propio "Generar
+  // cobro" — cobro recurrente duplicado de verdad, no solo una fila de
+  // más. Bloquea solo la MISMA combinación paciente+plan ya activa; un
+  // paciente en dos planes distintos sigue siendo un caso válido.
+  const { data: yaSuscripto } = await supabase
+    .from("suscripciones_pacientes")
+    .select("id")
+    .eq("paciente_id", pacienteId)
+    .eq("plan_id", planId)
+    .eq("estado", "activa")
+    .maybeSingle();
+  if (yaSuscripto) {
+    return { status: "error", error: "Este paciente ya tiene una suscripción activa a este plan." };
+  }
+
   const inicio = fechaInicio ?? new Date().toISOString().slice(0, 10);
 
   const { error } = await supabase.from("suscripciones_pacientes").insert({
@@ -170,64 +170,40 @@ export type GenerarCobroState =
   | { status: "error"; error: string }
   | { status: "success" };
 
+// Textos de las excepciones que tira generar_cobro_suscripcion() —
+// autoría propia (016_generar_cobro_suscripcion_rpc.sql), no un mensaje
+// crudo de Postgres, así que es seguro mostrarlos tal cual. Cualquier
+// otro error (conexión, algo inesperado) cae al genérico.
+const MENSAJES_RPC_SEGUROS = new Set([
+  "Suscripción no encontrada.",
+  "La suscripción no está activa.",
+  "Todavía no vence.",
+  "El plan de esta suscripción ya no existe.",
+]);
+
 /** El único paso "recurrente" de todo esto — explícito, un click por
- * cobro, nunca automático (sin cron en este proyecto). Relee la
- * suscripción + su plan antes de generar nada, y solo genera si sigue
- * activa y realmente vencida — evita un cobro fantasma si se hace doble
- * click justo cuando otro tab ya la avanzó. */
+ * cobro, nunca automático (sin cron en este proyecto). Insert del cobro
+ * + avance de `proximo_vencimiento` pasaron a una RPC transaccional
+ * (`generar_cobro_suscripcion`, 016) con lock de fila — hallazgo
+ * bloqueante del pre-commit-orchestrator: la versión anterior con dos
+ * escrituras sueltas desde acá podía generar un cobro duplicado real,
+ * tanto por reintento tras un fallo parcial como por una race condition
+ * genuina entre dos clicks/tabs concurrentes. */
 export async function generarCobroSuscripcion(suscripcionId: string): Promise<GenerarCobroState> {
-  const { supabase, profesional } = await getAuthorizedProfesional();
+  const { supabase } = await getAuthorizedProfesional();
 
-  const { data: suscripcion, error: suscripcionError } = await supabase
-    .from("suscripciones_pacientes")
-    .select("id, paciente_id, estado, proximo_vencimiento, planes_suscripcion(monto, frecuencia)")
-    .eq("id", suscripcionId)
-    .eq("profesional_id", profesional.id)
-    .maybeSingle();
-
-  if (suscripcionError || !suscripcion) {
-    console.error("[generarCobroSuscripcion] select falló:", suscripcionError);
-    return { status: "error", error: "No se encontró la suscripción." };
-  }
-  if (suscripcion.estado !== "activa") {
-    return { status: "error", error: "La suscripción no está activa." };
-  }
-  const hoy = new Date().toISOString().slice(0, 10);
-  if (suscripcion.proximo_vencimiento > hoy) {
-    return { status: "error", error: "Todavía no vence." };
-  }
-
-  const plan = suscripcion.planes_suscripcion as unknown as {
-    monto: number;
-    frecuencia: Frecuencia;
-  } | null;
-  if (!plan) {
-    return { status: "error", error: "El plan de esta suscripción ya no existe." };
-  }
-
-  const { error: insertError } = await supabase.from("cobros").insert({
-    profesional_id: profesional.id,
-    paciente_id: suscripcion.paciente_id,
-    suscripcion_id: suscripcion.id,
-    monto: plan.monto,
-    fecha_vencimiento: suscripcion.proximo_vencimiento,
+  const { error } = await supabase.rpc("generar_cobro_suscripcion", {
+    p_suscripcion_id: suscripcionId,
   });
 
-  if (insertError) {
-    console.error("[generarCobroSuscripcion] insert de cobro falló:", insertError);
-    return { status: "error", error: "No se pudo generar el cobro. Intentá de nuevo." };
-  }
-
-  const { error: updateError } = await supabase
-    .from("suscripciones_pacientes")
-    .update({ proximo_vencimiento: avanzarFecha(suscripcion.proximo_vencimiento, plan.frecuencia) })
-    .eq("id", suscripcion.id);
-
-  if (updateError) {
-    // El cobro ya se generó — no falla la operación completa por esto,
-    // pero el próximo vencimiento queda desactualizado hasta corregirlo
-    // a mano. Se loguea para poder encontrarlo.
-    console.error("[generarCobroSuscripcion] update de próximo vencimiento falló:", updateError);
+  if (error) {
+    console.error("[generarCobroSuscripcion] RPC falló:", error);
+    return {
+      status: "error",
+      error: MENSAJES_RPC_SEGUROS.has(error.message)
+        ? error.message
+        : "No se pudo generar el cobro. Intentá de nuevo.",
+    };
   }
 
   revalidatePath("/app/cobros/suscripciones");
