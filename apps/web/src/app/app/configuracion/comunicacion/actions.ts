@@ -36,5 +36,6 @@ export async function actualizarComunicacion(
   }
 
   revalidatePath("/app/configuracion/comunicacion");
+  revalidatePath("/app/pacientes/nuevo"); // consumidor real: plantilla_invitacion_whatsapp
   return { status: "success" };
 }

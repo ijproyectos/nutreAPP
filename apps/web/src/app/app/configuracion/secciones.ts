@@ -25,7 +25,8 @@ export const GRUPOS_CONFIGURACION: {
       {
         slug: "mi-agenda",
         label: "Mi agenda",
-        descripcion: "Disponibilidad y duración por defecto de los turnos.",
+        descripcion:
+          "Tipo de turno por defecto al crear uno nuevo. Sin \"duración\" ni \"disponibilidad\": turnos no tiene columna de duración, y disponibilidad/bloqueo de horarios no está construido.",
       },
       {
         slug: "mi-google-calendar",

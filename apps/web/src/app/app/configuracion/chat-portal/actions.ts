@@ -29,5 +29,6 @@ export async function actualizarChatPortal(
   }
 
   revalidatePath("/app/configuracion/chat-portal");
+  revalidatePath("/portal/chat"); // consumidor real: chat-view-paciente.tsx
   return { status: "success" };
 }

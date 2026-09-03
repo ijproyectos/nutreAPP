@@ -30,5 +30,10 @@ export async function actualizarPlanes(
   }
 
   revalidatePath("/app/configuracion/planes-alimentarios");
+  // Consumidor real: PlanIAPanel en la ficha de CUALQUIER paciente — sin
+  // un id concreto acá, mismo patrón ya usado en
+  // onboarding/invitacion/[token]/wizard-actions.ts para el mismo caso
+  // (revalidar un dynamic segment sin conocer el id puntual).
+  revalidatePath("/app/pacientes/[id]", "page");
   return { status: "success" };
 }

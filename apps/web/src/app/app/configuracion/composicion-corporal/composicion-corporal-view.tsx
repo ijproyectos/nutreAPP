@@ -10,6 +10,12 @@ import { actualizarMetricas, type ActualizarMetricasState } from "./actions";
 
 const initialState: ActualizarMetricasState = { status: "idle" };
 
+// Mismo tope que actions.ts (MAX_METRICAS) — reflejado acá para que el
+// usuario vea por qué no puede agregar una más, en vez de que el server
+// action recorte en silencio las últimas al guardar (hallazgo del
+// pre-commit-orchestrator).
+const MAX_METRICAS = 20;
+
 export function ComposicionCorporalView({
   metricasIniciales,
 }: {
@@ -22,6 +28,10 @@ export function ComposicionCorporalView({
   function agregar() {
     const valor = nueva.trim();
     if (!valor || metricas.includes(valor)) {
+      setNueva("");
+      return;
+    }
+    if (metricas.length >= MAX_METRICAS) {
       setNueva("");
       return;
     }
@@ -52,14 +62,21 @@ export function ComposicionCorporalView({
 
       <form action={formAction} className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="nueva_metrica">Métricas</Label>
+          <Label htmlFor="nueva_metrica">
+            Métricas ({metricas.length}/{MAX_METRICAS})
+          </Label>
           <Input
             id="nueva_metrica"
             value={nueva}
             onChange={(e) => setNueva(e.target.value)}
             onKeyDown={handleKeyDown}
             onBlur={agregar}
-            placeholder="Escribí y presioná Enter para agregar"
+            disabled={metricas.length >= MAX_METRICAS}
+            placeholder={
+              metricas.length >= MAX_METRICAS
+                ? "Llegaste al máximo de 20 — borrá alguna para agregar otra"
+                : "Escribí y presioná Enter para agregar"
+            }
           />
           {metricas.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
