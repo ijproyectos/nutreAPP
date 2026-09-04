@@ -30,12 +30,15 @@ function iniciales(nombre: string) {
 export function ChatsView({
   conversacionesIniciales,
   pacientesDisponibles,
+  destinoInicial,
 }: {
   conversacionesIniciales: Conversacion[];
   pacientesDisponibles: { id: string; nombre: string }[];
+  /** /app/chats?paciente=<id>, desde el botón "Chat" de la ficha. */
+  destinoInicial?: Destino | null;
 }) {
   const queryClient = useQueryClient();
-  const [destino, setDestino] = useState<Destino | null>(null);
+  const [destino, setDestino] = useState<Destino | null>(destinoInicial ?? null);
   const [busqueda, setBusqueda] = useState("");
   const [texto, setTexto] = useState("");
   const [archivo, setArchivo] = useState<File | null>(null);

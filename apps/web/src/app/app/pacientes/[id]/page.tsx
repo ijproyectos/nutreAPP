@@ -1,14 +1,16 @@
 import Link from "next/link";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Check } from "lucide-react";
+import { Check, MessageSquare, CalendarPlus } from "lucide-react";
 import { getAuthorizedProfesional } from "@/lib/dal";
 import { edadDesde, formatoFechaCorta } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { LaboratorioReviewCard } from "./laboratorio-review-card";
 import { PlanIAPanel } from "./plan-ia-panel";
 import { HistoriaClinicaPanel } from "./historia-clinica-panel";
 import { PedirSeccionButton } from "./pedir-seccion-button";
+import { FichaTabs } from "./ficha-tabs";
 import type { Seccion } from "@/app/onboarding/invitacion/[token]/wizard-actions";
 
 const SECCIONES_PERFIL: { key: Seccion; label: string; detalle: string }[] = [
@@ -134,6 +136,11 @@ export default async function FichaPacientePage(
     (l) => l.estado !== "pendiente_revision"
   );
 
+  const ahora = new Date();
+  const proximoTurno = (turnos ?? [])
+    .filter((t) => t.estado !== "cancelado" && new Date(t.fecha_hora) > ahora)
+    .sort((a, b) => +new Date(a.fecha_hora) - +new Date(b.fecha_hora))[0];
+
   const { data: planes } = await supabase
     .from("planes")
     .select("id, contenido, estado, generado_con_ia, enviado_at, created_at")
@@ -180,275 +187,313 @@ export default async function FichaPacientePage(
       100
   );
 
-  return (
-    <div className="flex flex-col gap-6 p-6">
-      <div>
-        <Link
-          href="/app/pacientes"
-          className="mb-2 flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="size-4" />
-          Pacientes
-        </Link>
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-bold text-primary">
-            {paciente.nombre}
-          </h1>
-          <Badge variant="outline">
-            {paciente.estado === "activo" ? "Activo" : "Archivado"}
-          </Badge>
-        </div>
+  const datosContacto = [
+    paciente.telefono ? paciente.telefono : null,
+    paciente.email,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  const historiaContent = (
+    <HistoriaClinicaPanel
+      // Fuerza remount al cambiar de paciente — el useState de "notas"
+      // solo se inicializa en el mount, así que sin esto una
+      // reconciliación de React entre dos pacientes distintos (misma
+      // posición en el árbol) podría dejar ver/editar las notas del
+      // paciente anterior.
+      key={paciente.id}
+      pacienteId={paciente.id}
+      mediciones={mediciones ?? []}
+      turnos={(turnos ?? []).map((t) => ({
+        id: t.id,
+        fechaHora: t.fecha_hora,
+        tipo: t.tipo as "presencial" | "videollamada",
+        estado: t.estado as "pendiente" | "confirmado" | "en_curso" | "cancelado",
+      }))}
+      notasIniciales={paciente.notas_generales}
+    />
+  );
+
+  const laboratoriosContent = (
+    <div className="flex flex-col gap-3">
+      {(!laboratorios || laboratorios.length === 0) && (
         <p className="text-sm text-muted-foreground">
-          {edad !== null && `${edad} años · `}
-          {paciente.telefono || "sin teléfono"} · {paciente.email}
+          Este paciente todavía no subió ningún laboratorio.
         </p>
-      </div>
-
-      {invitacion && (
-        <section className="flex flex-col gap-3">
-          <h2 className="text-lg font-semibold">Completitud del perfil</h2>
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-            <div className="rounded-xl border border-border bg-card p-5 lg:col-span-2">
-              <div className="mb-4 flex items-baseline justify-between">
-                <span className="text-3xl font-bold text-primary">
-                  {porcentajeCompletitud}%
-                </span>
-                <span className="text-sm text-muted-foreground">
-                  {seccionesPendientes.length === 0
-                    ? "Perfil completo."
-                    : `Falta ${seccionesPendientes.length} de ${SECCIONES_PERFIL.length} secciones. Lo que respondió ya está en la ficha.`}
-                </span>
-              </div>
-              <div className="mb-4 flex gap-1">
-                {seccionesCompletitud.map((s) => (
-                  <div
-                    key={s.key}
-                    className={`h-1.5 flex-1 rounded-full ${
-                      s.completadoAt ? "bg-primary" : "bg-muted"
-                    }`}
-                  />
-                ))}
-              </div>
-              <div className="flex flex-col divide-y divide-border">
-                {seccionesCompletitud.map((s) => (
-                  <div
-                    key={s.key}
-                    className={`flex items-center justify-between gap-3 py-3 ${
-                      !s.completadoAt ? "border-l-2 border-l-destructive pl-3" : ""
-                    }`}
-                  >
-                    <div className="flex items-start gap-2.5">
-                      <span
-                        className={`mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full ${
-                          s.completadoAt
-                            ? "bg-primary text-primary-foreground"
-                            : "border border-input"
-                        }`}
-                      >
-                        {s.completadoAt && <Check className="size-3" />}
-                      </span>
-                      <div>
-                        <p className="font-medium">{s.label}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {s.completadoAt
-                            ? formatoFechaCorta(s.completadoAt)
-                            : s.detalle}
-                        </p>
-                      </div>
-                    </div>
-                    {!s.completadoAt && linkInvitacion && (
-                      <PedirSeccionButton
-                        token={invitacion.token}
-                        telefono={paciente.telefono}
-                        link={linkInvitacion}
-                        texto={`Hola ${paciente.nombre}! Nos falta ${s.label.toLowerCase()} para completar tu perfil en NutrIA:`}
-                        label="Pedir"
-                      />
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-4">
-              {seccionesPendientes.length > 0 && linkInvitacion && (
-                <div className="rounded-xl border border-border bg-card p-5">
-                  <p className="mb-2 text-xs font-medium tracking-wide text-muted-foreground">
-                    PEDIR LO QUE FALTA
-                  </p>
-                  <p className="mb-3 text-sm text-muted-foreground">
-                    El link abre directo en lo que falta. No vuelve a
-                    preguntar lo que ya respondió.
-                  </p>
-                  <div className="mb-3 flex flex-wrap gap-1.5">
-                    {seccionesPendientes.map((s) => (
-                      <Badge key={s.key} variant="outline">
-                        {s.label}
-                      </Badge>
-                    ))}
-                  </div>
-                  <PedirSeccionButton
-                    token={invitacion.token}
-                    telefono={paciente.telefono}
-                    link={linkInvitacion}
-                    texto={`Hola ${paciente.nombre}! Te dejo el link para terminar de completar tu perfil en NutrIA:`}
-                    label="Reenviar solo lo pendiente"
-                    variant="default"
-                  />
-                </div>
-              )}
-
-              {eventosInvitacion && eventosInvitacion.length > 0 && (
-                <div className="rounded-xl border border-border bg-card p-5">
-                  <p className="mb-3 text-xs font-medium tracking-wide text-muted-foreground">
-                    ACTIVIDAD DEL LINK
-                  </p>
-                  <ul className="flex flex-col gap-2.5">
-                    {eventosInvitacion.map((e, i) => (
-                      <li
-                        key={i}
-                        className="flex items-start justify-between gap-3 text-sm"
-                      >
-                        <span className="flex items-start gap-2">
-                          <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-accent-foreground" />
-                          {e.tipo === "seccion_completada"
-                            ? `Completó ${(SECCION_LABEL[e.seccion ?? ""] ?? e.seccion)?.toLowerCase()}`
-                            : (EVENTO_DESCRIPCION[e.tipo] ?? e.tipo)}
-                        </span>
-                        <span className="shrink-0 text-xs text-muted-foreground">
-                          {formatoFechaCorta(e.created_at)}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          </div>
-        </section>
       )}
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-semibold">Historia clínica</h2>
-        <HistoriaClinicaPanel
-          // Fuerza remount al cambiar de paciente — mismo motivo que el
-          // key de PlanIAPanel más abajo: el useState de "notas" solo se
-          // inicializa en el mount, así que sin esto una reconciliación
-          // de React entre dos pacientes distintos (misma posición en el
-          // árbol) podría dejar ver/editar las notas del paciente
-          // anterior.
-          key={paciente.id}
-          pacienteId={paciente.id}
-          mediciones={mediciones ?? []}
-          turnos={(turnos ?? []).map((t) => ({
-            id: t.id,
-            fechaHora: t.fecha_hora,
-            tipo: t.tipo as "presencial" | "videollamada",
-            estado: t.estado as
-              | "pendiente"
-              | "confirmado"
-              | "en_curso"
-              | "cancelado",
-          }))}
-          notasIniciales={paciente.notas_generales}
-        />
-      </section>
+      {pendientes.length > 0 && (
+        <div className="flex flex-col gap-3">
+          {pendientes.map((lab) => (
+            <LaboratorioReviewCard
+              key={lab.id}
+              laboratorio={{
+                id: lab.id,
+                fecha_estudio: lab.fecha_estudio,
+                valores: (lab.valores ?? {}) as Record<string, number>,
+                notas_profesional: lab.notas_profesional,
+              }}
+              archivoUrl={urlsFirmadas.get(lab.id) ?? null}
+            />
+          ))}
+        </div>
+      )}
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-semibold">Laboratorios</h2>
-
-        {(!laboratorios || laboratorios.length === 0) && (
-          <p className="text-sm text-muted-foreground">
-            Este paciente todavía no subió ningún laboratorio.
-          </p>
-        )}
-
-        {pendientes.length > 0 && (
-          <div className="flex flex-col gap-3">
-            {pendientes.map((lab) => (
-              <LaboratorioReviewCard
+      {revisados.length > 0 && (
+        <div className="flex flex-col gap-3">
+          {revisados.map((lab) => {
+            const valores = (lab.valores ?? {}) as Record<string, number>;
+            return (
+              <div
                 key={lab.id}
-                laboratorio={{
-                  id: lab.id,
-                  fecha_estudio: lab.fecha_estudio,
-                  valores: (lab.valores ?? {}) as Record<string, number>,
-                  notas_profesional: lab.notas_profesional,
-                }}
-                archivoUrl={urlsFirmadas.get(lab.id) ?? null}
-              />
-            ))}
-          </div>
-        )}
-
-        {revisados.length > 0 && (
-          <div className="flex flex-col gap-3">
-            {revisados.map((lab) => {
-              const valores = (lab.valores ?? {}) as Record<string, number>;
-              return (
-                <div
-                  key={lab.id}
-                  className="flex flex-col gap-2 rounded-xl border border-border bg-card p-4"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="font-medium">
-                      {formatoFechaCorta(lab.fecha_estudio)}
-                    </span>
-                    <div className="flex items-center gap-3">
-                      <Badge className={ESTADO_ESTILO[lab.estado]}>
-                        {ESTADO_LABEL[lab.estado] ?? lab.estado}
-                      </Badge>
-                      {urlsFirmadas.get(lab.id) && (
-                        <a
-                          href={urlsFirmadas.get(lab.id)}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-sm font-medium text-primary hover:underline"
-                        >
-                          Ver archivo →
-                        </a>
-                      )}
-                    </div>
+                className="flex flex-col gap-2 rounded-2xl border border-border bg-card p-4"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-medium">
+                    {formatoFechaCorta(lab.fecha_estudio)}
+                  </span>
+                  <div className="flex items-center gap-3">
+                    <Badge className={ESTADO_ESTILO[lab.estado]}>
+                      {ESTADO_LABEL[lab.estado] ?? lab.estado}
+                    </Badge>
+                    {urlsFirmadas.get(lab.id) && (
+                      <a
+                        href={urlsFirmadas.get(lab.id)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-sm font-medium text-primary hover:underline"
+                      >
+                        Ver archivo →
+                      </a>
+                    )}
                   </div>
-                  {Object.keys(valores).length > 0 && (
-                    <div className="flex flex-wrap gap-1.5">
-                      {Object.entries(valores).map(([clave, valor]) => (
-                        <span
-                          key={clave}
-                          className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground"
-                        >
-                          {clave.replace(/_/g, " ")}: {valor}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                  {lab.notas_profesional && (
-                    <p className="text-sm text-muted-foreground">
-                      {lab.notas_profesional}
-                    </p>
-                  )}
                 </div>
-              );
-            })}
+                {Object.keys(valores).length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {Object.entries(valores).map(([clave, valor]) => (
+                      <span
+                        key={clave}
+                        className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground"
+                      >
+                        {clave.replace(/_/g, " ")}: {valor}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {lab.notas_profesional && (
+                  <p className="text-sm text-muted-foreground">{lab.notas_profesional}</p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+
+  const planContent = (
+    <PlanIAPanel
+      // Fuerza remount cuando cambia la identidad del plan activo — sin
+      // esto PlanIAPanel reusa la instancia y el useState local de
+      // `contenido` queda con el valor inicial.
+      key={planActivo?.id ?? "sin-plan"}
+      pacienteId={paciente.id}
+      planActivo={planActivo}
+      planesEnviados={planesEnviados}
+      plantillaPlanDefault={preferenciasPlan?.plantilla_plan_alimentario ?? ""}
+    />
+  );
+
+  const completitudContent = invitacion && linkInvitacion && (
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <div className="rounded-2xl border border-border bg-card p-5 lg:col-span-2">
+        <div className="mb-4 flex items-baseline justify-between">
+          <span className="font-heading text-[27px] tracking-[-.015em] tabular-nums text-primary">
+            {porcentajeCompletitud}%
+          </span>
+          <span className="text-sm text-muted-foreground">
+            {seccionesPendientes.length === 0
+              ? "Perfil completo."
+              : `Falta ${seccionesPendientes.length} de ${SECCIONES_PERFIL.length} secciones. Lo que respondió ya está en la ficha.`}
+          </span>
+        </div>
+        <div className="mb-4 flex gap-1">
+          {seccionesCompletitud.map((s) => (
+            <div
+              key={s.key}
+              className={`h-1.5 flex-1 rounded-full ${s.completadoAt ? "bg-primary" : "bg-muted"}`}
+            />
+          ))}
+        </div>
+        <div className="flex flex-col divide-y divide-border">
+          {seccionesCompletitud.map((s) => (
+            <div
+              key={s.key}
+              className={`flex items-center justify-between gap-3 py-3 ${
+                !s.completadoAt ? "border-l-2 border-l-destructive pl-3" : ""
+              }`}
+            >
+              <div className="flex items-start gap-2.5">
+                <span
+                  className={`mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full ${
+                    s.completadoAt ? "bg-primary text-primary-foreground" : "border border-input"
+                  }`}
+                >
+                  {s.completadoAt && <Check className="size-3" />}
+                </span>
+                <div>
+                  <p className="font-medium">{s.label}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {s.completadoAt ? formatoFechaCorta(s.completadoAt) : s.detalle}
+                  </p>
+                </div>
+              </div>
+              {!s.completadoAt && (
+                <PedirSeccionButton
+                  token={invitacion.token}
+                  telefono={paciente.telefono}
+                  link={linkInvitacion}
+                  texto={`Hola ${paciente.nombre}! Nos falta ${s.label.toLowerCase()} para completar tu perfil en NutrIA:`}
+                  label="Pedir"
+                />
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-4">
+        {seccionesPendientes.length > 0 && (
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <p className="mb-2 text-xs font-medium tracking-wide text-muted-foreground">
+              PEDIR LO QUE FALTA
+            </p>
+            <p className="mb-3 text-sm text-muted-foreground">
+              El link abre directo en lo que falta. No vuelve a preguntar lo que ya respondió.
+            </p>
+            <div className="mb-3 flex flex-wrap gap-1.5">
+              {seccionesPendientes.map((s) => (
+                <Badge key={s.key} variant="outline">
+                  {s.label}
+                </Badge>
+              ))}
+            </div>
+            <PedirSeccionButton
+              token={invitacion.token}
+              telefono={paciente.telefono}
+              link={linkInvitacion}
+              texto={`Hola ${paciente.nombre}! Te dejo el link para terminar de completar tu perfil en NutrIA:`}
+              label="Reenviar solo lo pendiente"
+              variant="default"
+            />
           </div>
         )}
-      </section>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-semibold">Plan alimentario</h2>
-        <PlanIAPanel
-          // Fuerza remount cuando cambia la identidad del plan activo (de
-          // null a un id recién generado, o a un id nuevo tras
-          // "Regenerar con IA") — si no, PlanIAPanel reusa la instancia y
-          // el useState local de `contenido` queda con el valor inicial
-          // ("" cuando no había plan), mostrando el textarea vacío aunque
-          // planActivo.contenido ya tenga el plan generado.
-          key={planActivo?.id ?? "sin-plan"}
-          pacienteId={paciente.id}
-          planActivo={planActivo}
-          planesEnviados={planesEnviados}
-          plantillaPlanDefault={preferenciasPlan?.plantilla_plan_alimentario ?? ""}
-        />
-      </section>
+        {eventosInvitacion && eventosInvitacion.length > 0 && (
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <p className="mb-3 text-xs font-medium tracking-wide text-muted-foreground">
+              ACTIVIDAD DEL LINK
+            </p>
+            <ul className="flex flex-col gap-2.5">
+              {eventosInvitacion.map((e, i) => (
+                <li key={i} className="flex items-start justify-between gap-3 text-sm">
+                  <span className="flex items-start gap-2">
+                    <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary" />
+                    {e.tipo === "seccion_completada"
+                      ? `Completó ${(SECCION_LABEL[e.seccion ?? ""] ?? e.seccion)?.toLowerCase()}`
+                      : (EVENTO_DESCRIPCION[e.tipo] ?? e.tipo)}
+                  </span>
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    {formatoFechaCorta(e.created_at)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  return (
+    <div>
+      <div className="border-b border-border bg-card px-10 pt-4">
+        <div className="pb-1.5 text-[12.5px] text-muted-foreground">
+          <Link href="/app/pacientes" className="hover:text-primary">
+            Pacientes
+          </Link>{" "}
+          <span className="text-[#C8BFC9]">/</span>{" "}
+          <span className="text-foreground">{paciente.nombre}</span>
+        </div>
+
+        <div className="flex flex-wrap items-start gap-x-7 gap-y-4 pb-3.5">
+          <div className="min-w-0 flex-1 basis-[380px]">
+            <h1 className="font-heading text-[29px] leading-[1.12] tracking-[-.01em]">
+              {paciente.nombre}
+            </h1>
+            <p className="pt-1.5 text-[13.5px] leading-[1.5] tabular-nums text-muted-foreground">
+              {edad !== null && <>{edad} años</>}
+              {datosContacto && (
+                <>
+                  {edad !== null && <span className="px-1.5 text-[#C8BFC9]">·</span>}
+                  {datosContacto}
+                </>
+              )}
+              {proximoTurno && (
+                <>
+                  <span className="px-1.5 text-[#C8BFC9]">|</span>
+                  próximo turno{" "}
+                  {new Date(proximoTurno.fecha_hora).toLocaleString("es-AR", {
+                    weekday: "short",
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </>
+              )}
+              {paciente.estado !== "activo" && (
+                <>
+                  <span className="px-1.5 text-[#C8BFC9]">|</span>
+                  archivado
+                </>
+              )}
+            </p>
+          </div>
+          <div className="flex shrink-0 gap-2 pt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              nativeButton={false}
+              render={<Link href={`/app/chats?paciente=${paciente.id}`} />}
+              className="gap-1.5"
+            >
+              <MessageSquare className="size-3.5" />
+              Chat
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              nativeButton={false}
+              render={<Link href={`/app/agenda?paciente=${paciente.id}`} />}
+              className="gap-1.5"
+            >
+              <CalendarPlus className="size-3.5" />
+              Nuevo turno
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <div className="px-10 pt-6 pb-16">
+        <div className="max-w-[900px]">
+          <FichaTabs
+            historia={historiaContent}
+            laboratorios={laboratoriosContent}
+            plan={planContent}
+            completitud={completitudContent}
+          />
+        </div>
+      </div>
     </div>
   );
 }
