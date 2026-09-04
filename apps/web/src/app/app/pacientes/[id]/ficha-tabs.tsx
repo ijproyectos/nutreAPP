@@ -1,48 +1,71 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import type { ReactNode } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
-/** Rediseño visual: la ficha pasa de 4 secciones apiladas a un tab bar
- * (subrayado de marca en el activo, mismo patrón visual que el mockup de
- * Ficha de Paciente) — estructural, no solo de color, pero usando los
- * nombres y el contenido reales que ya existen (Historia clínica /
- * Laboratorios / Plan alimentario / Completitud del perfil), no los
- * cuatro tabs del mockup ("Consulta/Historia/Archivos/Datos"), que
- * implican funcionalidad que no está construida (notas con auto-guardado
- * y "enviar devolución", archivo genérico más allá de laboratorios,
- * gráfico de peso). Cada contenido llega ya renderizado desde el Server
- * Component (page.tsx) — es un client wrapper solo para el estado del
- * tab activo. */
+const TABS = ["consulta", "historia", "archivos", "plan", "datos"] as const;
+type Tab = (typeof TABS)[number];
+
+/** Rediseño (NutrIA Ficha de Paciente.dc.html): las 4 pestañas del
+ * mockup (Consulta/Historia/Archivos/Datos) más "Plan alimentario",
+ * que el mockup no tiene como tab propio — asume que el manejo de
+ * planes vive en el módulo "Planes" de la sidebar, que en este proyecto
+ * todavía no está construido (sigue "Próximamente"). El generador de
+ * planes con IA es funcionalidad real y muy usada; sacarlo de la ficha
+ * sin tener dónde ponerlo sería una regresión, no una limpieza — se
+ * mantiene como pestaña aparte.
+ *
+ * Estado activo en la URL (`?tab=`), no en memoria — mismo criterio que
+ * el resto del rediseño (Configuración, Cobros): permite linkear
+ * directo a una pestaña (ej. "Ver plan" desde el tab Consulta). */
 export function FichaTabs({
+  consulta,
   historia,
-  laboratorios,
+  archivos,
   plan,
-  completitud,
+  datos,
 }: {
+  consulta: ReactNode;
   historia: ReactNode;
-  laboratorios: ReactNode;
+  archivos: ReactNode;
   plan: ReactNode;
-  /** null cuando el paciente no tiene invitación (no debería pasar en la
-   * práctica, todo alta pasa por invitar_paciente, pero se contempla). */
-  completitud: ReactNode | null;
+  datos: ReactNode;
 }) {
-  const [tab, setTab] = useState("historia");
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const tab: Tab = (TABS as readonly string[]).includes(tabParam ?? "")
+    ? (tabParam as Tab)
+    : "consulta";
+
+  function cambiarTab(next: string) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", next);
+    router.push(`${pathname}?${params.toString()}`, { scroll: false });
+  }
 
   return (
-    <Tabs value={tab} onValueChange={(v) => setTab(String(v))}>
+    <Tabs value={tab} onValueChange={(v) => cambiarTab(String(v))}>
       <TabsList variant="line" className="mb-0 gap-6 border-b border-border px-0">
+        <TabsTrigger
+          value="consulta"
+          className="rounded-none border-none px-0 pb-[11px] text-sm font-semibold text-muted-foreground shadow-none data-active:text-foreground data-active:shadow-[inset_0_-2px_0_var(--primary)]"
+        >
+          Consulta
+        </TabsTrigger>
         <TabsTrigger
           value="historia"
           className="rounded-none border-none px-0 pb-[11px] text-sm font-semibold text-muted-foreground shadow-none data-active:text-foreground data-active:shadow-[inset_0_-2px_0_var(--primary)]"
         >
-          Historia clínica
+          Historia
         </TabsTrigger>
         <TabsTrigger
-          value="laboratorios"
+          value="archivos"
           className="rounded-none border-none px-0 pb-[11px] text-sm font-semibold text-muted-foreground shadow-none data-active:text-foreground data-active:shadow-[inset_0_-2px_0_var(--primary)]"
         >
-          Laboratorios
+          Archivos
         </TabsTrigger>
         <TabsTrigger
           value="plan"
@@ -50,30 +73,29 @@ export function FichaTabs({
         >
           Plan alimentario
         </TabsTrigger>
-        {completitud && (
-          <TabsTrigger
-            value="completitud"
-            className="rounded-none border-none px-0 pb-[11px] text-sm font-semibold text-muted-foreground shadow-none data-active:text-foreground data-active:shadow-[inset_0_-2px_0_var(--primary)]"
-          >
-            Completitud del perfil
-          </TabsTrigger>
-        )}
+        <TabsTrigger
+          value="datos"
+          className="rounded-none border-none px-0 pb-[11px] text-sm font-semibold text-muted-foreground shadow-none data-active:text-foreground data-active:shadow-[inset_0_-2px_0_var(--primary)]"
+        >
+          Datos
+        </TabsTrigger>
       </TabsList>
 
+      <TabsContent value="consulta" className="pt-6">
+        {consulta}
+      </TabsContent>
       <TabsContent value="historia" className="pt-6">
         {historia}
       </TabsContent>
-      <TabsContent value="laboratorios" className="pt-6">
-        {laboratorios}
+      <TabsContent value="archivos" className="pt-6">
+        {archivos}
       </TabsContent>
       <TabsContent value="plan" className="pt-6">
         {plan}
       </TabsContent>
-      {completitud && (
-        <TabsContent value="completitud" className="pt-6">
-          {completitud}
-        </TabsContent>
-      )}
+      <TabsContent value="datos" className="pt-6">
+        {datos}
+      </TabsContent>
     </Tabs>
   );
 }

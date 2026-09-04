@@ -1,14 +1,18 @@
 import Link from "next/link";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
-import { Check, MessageSquare, CalendarPlus } from "lucide-react";
+import { MessageSquare, CalendarPlus } from "lucide-react";
 import { getAuthorizedProfesional } from "@/lib/dal";
 import { edadDesde, formatoFechaCorta } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { obtenerDocumentos } from "@/lib/queries/documentos";
 import { LaboratorioReviewCard } from "./laboratorio-review-card";
 import { PlanIAPanel } from "./plan-ia-panel";
-import { HistoriaClinicaPanel } from "./historia-clinica-panel";
+import { ConsultaPanel } from "./consulta-panel";
+import { HistoriaTimelinePanel, type EventoHistoria } from "./historia-timeline-panel";
+import { ArchivosPanel } from "./archivos-panel";
+import { DatosEditablesPanel } from "./datos-editables-panel";
 import { PedirSeccionButton } from "./pedir-seccion-button";
 import { FichaTabs } from "./ficha-tabs";
 import type { Seccion } from "@/app/onboarding/invitacion/[token]/wizard-actions";
@@ -49,7 +53,10 @@ export default async function FichaPacientePage(
   const { data: paciente, error: pacienteError } = await supabase
     .from("pacientes")
     .select(
-      `id, nombre, telefono, email, fecha_nacimiento, estado, notas_generales,
+      `id, nombre, telefono, email, fecha_nacimiento, estado, notas_generales, created_at,
+       dni, obra_social, motivo_consulta, sede, quien_derivo, sexo_biologico,
+       condiciones, alergias, medicacion,
+       habitos_comidas, habitos_quien_cocina, habitos_movimiento,
        datos_personales_completado_at, contacto_completado_at,
        antecedentes_completado_at, habitos_completado_at,
        consentimiento_completado_at`
@@ -73,9 +80,6 @@ export default async function FichaPacientePage(
   }
   if (!paciente) notFound();
 
-  // Completitud del perfil + "Actividad del link" (mockup "En la ficha",
-  // ver 008/009). La invitación más reciente es la relevante — un
-  // paciente solo tiene una activa/aceptada a la vez en la práctica.
   const { data: invitacion } = await supabase
     .from("invitaciones")
     .select("id, token")
@@ -90,7 +94,7 @@ export default async function FichaPacientePage(
         .select("tipo, seccion, created_at")
         .eq("invitacion_id", invitacion.id)
         .order("created_at", { ascending: false })
-        .limit(8)
+        .limit(20)
     : { data: null };
 
   const headersList = await headers();
@@ -112,6 +116,22 @@ export default async function FichaPacientePage(
     .eq("paciente_id", id)
     .order("fecha_hora", { ascending: false });
 
+  // Tab Consulta ("de qué veníamos") + tab Historia (línea de tiempo).
+  const { data: consultas } = await supabase
+    .from("consultas")
+    .select("id, fecha, acordado, completo, cambio, created_at")
+    .eq("paciente_id", id)
+    .order("fecha", { ascending: false })
+    .limit(60);
+
+  // Tab Consulta ("qué pasó desde entonces" + grilla de adherencia).
+  const { data: registros } = await supabase
+    .from("registros_comida")
+    .select("fecha, adherencia")
+    .eq("paciente_id", id)
+    .order("fecha", { ascending: false })
+    .limit(60);
+
   const { data: laboratorios } = await supabase
     .from("laboratorios")
     .select(
@@ -128,6 +148,17 @@ export default async function FichaPacientePage(
     if (data?.signedUrl) urlsFirmadas.set(lab.id, data.signedUrl);
   }
 
+  const documentos = await obtenerDocumentos(supabase, id);
+
+  // Tab Consulta ("pendiente de cobro").
+  const { data: cobrosPendientes } = await supabase
+    .from("cobros")
+    .select("monto, fecha_vencimiento, created_at")
+    .eq("paciente_id", id)
+    .eq("estado", "pendiente")
+    .order("created_at", { ascending: true })
+    .limit(1);
+
   const edad = edadDesde(paciente.fecha_nacimiento);
   const pendientes = (laboratorios ?? []).filter(
     (l) => l.estado === "pendiente_revision"
@@ -137,6 +168,7 @@ export default async function FichaPacientePage(
   );
 
   const ahora = new Date();
+  const hoyISO = ahora.toISOString().slice(0, 10);
   const proximoTurno = (turnos ?? [])
     .filter((t) => t.estado !== "cancelado" && new Date(t.fecha_hora) > ahora)
     .sort((a, b) => +new Date(a.fecha_hora) - +new Date(b.fecha_hora))[0];
@@ -194,25 +226,129 @@ export default async function FichaPacientePage(
     .filter(Boolean)
     .join(" · ");
 
-  const historiaContent = (
-    <HistoriaClinicaPanel
-      // Fuerza remount al cambiar de paciente — el useState de "notas"
-      // solo se inicializa en el mount, así que sin esto una
-      // reconciliación de React entre dos pacientes distintos (misma
-      // posición en el árbol) podría dejar ver/editar las notas del
-      // paciente anterior.
+  // ---------- Tab Consulta ----------
+  const consultaHoy = (consultas ?? []).find((c) => c.fecha === hoyISO);
+  const consultaAnterior = (consultas ?? [])
+    .filter((c) => c.fecha !== hoyISO && c.acordado)
+    .sort((a, b) => +new Date(b.fecha) - +new Date(a.fecha))[0];
+
+  const desde21 = new Date(ahora);
+  desde21.setDate(desde21.getDate() - 20);
+  const registrosUltimos21 = (registros ?? []).filter(
+    (r) => new Date(r.fecha) >= desde21
+  );
+  const diasDesdeAlta =
+    Math.floor((ahora.getTime() - new Date(paciente.created_at).getTime()) / 86_400_000) + 1;
+  const registrosEsperados = Math.max(1, Math.min(21, diasDesdeAlta));
+  const registrosHechos = new Set(registrosUltimos21.map((r) => r.fecha)).size;
+
+  const registrosPorFecha = new Map(
+    registrosUltimos21.map((r) => [r.fecha, !!r.adherencia])
+  );
+  const adherencia21: boolean[] = [];
+  for (let i = 20; i >= 0; i--) {
+    const d = new Date(ahora);
+    d.setDate(d.getDate() - i);
+    adherencia21.push(!!registrosPorFecha.get(d.toISOString().slice(0, 10)));
+  }
+
+  const medicionesAsc = [...(mediciones ?? [])]
+    .filter((m) => m.peso !== null)
+    .sort((a, b) => +new Date(a.fecha) - +new Date(b.fecha));
+  const ultimaMedicion = medicionesAsc[medicionesAsc.length - 1];
+  const hace30 = new Date(ahora);
+  hace30.setDate(hace30.getDate() - 30);
+  const medicionReferencia =
+    medicionesAsc.filter((m) => new Date(m.fecha) <= hace30).slice(-1)[0] ??
+    medicionesAsc[0];
+  const deltaPesoMes =
+    ultimaMedicion && medicionReferencia && medicionReferencia.id !== ultimaMedicion.id
+      ? Number((ultimaMedicion.peso! - medicionReferencia.peso!).toFixed(1))
+      : null;
+
+  const cobroMasViejo = (cobrosPendientes ?? [])[0];
+  const pendienteCobro = cobroMasViejo
+    ? {
+        monto: Number(cobroMasViejo.monto),
+        dias: Math.floor(
+          (ahora.getTime() -
+            new Date(cobroMasViejo.fecha_vencimiento ?? cobroMasViejo.created_at).getTime()) /
+            86_400_000
+        ),
+        telefono: paciente.telefono,
+      }
+    : null;
+
+  const consultaContent = (
+    <ConsultaPanel
       key={paciente.id}
       pacienteId={paciente.id}
+      pacienteNombre={paciente.nombre}
+      ultimaConsulta={
+        consultaAnterior ? { acordado: consultaAnterior.acordado as string, fecha: consultaAnterior.fecha } : null
+      }
+      notaHoyInicial={consultaHoy?.acordado ?? ""}
+      resumen={{
+        registrosHechos,
+        registrosEsperados,
+        deltaPesoMes,
+      }}
       mediciones={mediciones ?? []}
-      turnos={(turnos ?? []).map((t) => ({
-        id: t.id,
-        fechaHora: t.fecha_hora,
-        tipo: t.tipo as "presencial" | "videollamada",
-        estado: t.estado as "pendiente" | "confirmado" | "en_curso" | "cancelado",
-      }))}
-      notasIniciales={paciente.notas_generales}
+      adherencia21={adherencia21}
+      planResumen={{
+        existe: !!planActivo || planesEnviados.length > 0,
+        estado: planActivo ? planActivo.estado : planesEnviados.length > 0 ? "enviado" : null,
+      }}
+      pendienteCobro={pendienteCobro}
     />
   );
+
+  // ---------- Tab Historia (línea de tiempo) ----------
+  type EventoRaw = { fecha: Date; tipo: EventoHistoria["tipo"]; texto: string };
+  const eventosRaw: EventoRaw[] = [];
+
+  for (const c of consultas ?? []) {
+    const contenido = [c.acordado, c.completo, c.cambio].filter(Boolean).join(" — ");
+    if (!contenido) continue;
+    eventosRaw.push({ fecha: new Date(c.fecha), tipo: "Consulta", texto: contenido });
+  }
+  for (const m of mediciones ?? []) {
+    if (m.peso == null) continue;
+    eventosRaw.push({ fecha: new Date(m.fecha), tipo: "Medición", texto: `${m.peso} kg registrados.` });
+  }
+  for (const p of planes ?? []) {
+    if (p.enviado_at) {
+      eventosRaw.push({ fecha: new Date(p.enviado_at), tipo: "Plan", texto: "Enviaste el plan alimentario." });
+    } else {
+      eventosRaw.push({
+        fecha: new Date(p.created_at),
+        tipo: "Plan",
+        texto: p.generado_con_ia ? "Generaste un borrador de plan con IA." : "Armaste un borrador de plan.",
+      });
+    }
+  }
+  for (const e of eventosInvitacion ?? []) {
+    if (e.tipo === "seccion_completada") {
+      eventosRaw.push({
+        fecha: new Date(e.created_at),
+        tipo: "Formulario",
+        texto: `Completó ${(SECCION_LABEL[e.seccion ?? ""] ?? e.seccion ?? "").toLowerCase()}.`,
+      });
+    }
+  }
+  eventosRaw.push({ fecha: new Date(paciente.created_at), tipo: "Alta", texto: "Se dio de alta." });
+
+  const eventosHistoria: EventoHistoria[] = eventosRaw
+    .sort((a, b) => +b.fecha - +a.fecha)
+    .map((e) => ({ fecha: e.fecha.toISOString(), tipo: e.tipo, texto: e.texto }));
+
+  const historiaContent = <HistoriaTimelinePanel eventos={eventosHistoria} />;
+
+  // ---------- Tab Archivos ----------
+  const fechaUltimoArchivo = [
+    ...(laboratorios ?? []).map((l) => l.created_at),
+    ...documentos.map((d) => d.createdAt),
+  ].sort().slice(-1)[0];
 
   const laboratoriosContent = (
     <div className="flex flex-col gap-3">
@@ -291,6 +427,20 @@ export default async function FichaPacientePage(
     </div>
   );
 
+  const archivosContent = (
+    <ArchivosPanel
+      pacienteId={paciente.id}
+      pacienteNombre={paciente.nombre}
+      ultimaActividad={
+        fechaUltimoArchivo ? `Lo último que subió fue el ${formatoFechaCorta(fechaUltimoArchivo)}.` : null
+      }
+      laboratoriosSection={laboratoriosContent}
+      documentos={documentos}
+      planesEnviados={planesEnviados.map((p) => ({ id: p.id, enviadoAt: p.enviado_at }))}
+    />
+  );
+
+  // ---------- Tab Plan alimentario ----------
   const planContent = (
     <PlanIAPanel
       // Fuerza remount cuando cambia la identidad del plan activo — sin
@@ -304,129 +454,155 @@ export default async function FichaPacientePage(
     />
   );
 
-  const completitudContent = invitacion && linkInvitacion && (
-    <div className="grid grid-cols-1 items-start gap-[18px] lg:grid-cols-[minmax(0,1fr)_330px]">
-      <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_1px_2px_rgba(36,28,44,.04),0_14px_32px_-20px_rgba(36,28,44,.16)]">
-        <div className="border-b border-[#F2EBF0] px-[22px] pt-5 pb-[18px]">
-          <div className="flex items-end justify-between gap-4">
-            <div>
-              <p className="text-[10.5px] font-bold tracking-[.13em] text-muted-foreground uppercase">
-                Completitud del perfil
-              </p>
-              <p className="mt-2 font-heading text-[38px] leading-none tracking-[-.015em] tabular-nums">
-                {porcentajeCompletitud}%
-              </p>
-            </div>
-            <p className="max-w-[200px] shrink-0 text-right text-[12.5px] text-muted-foreground text-pretty">
-              {seccionesPendientes.length === 0
-                ? "Perfil completo."
-                : `Falta ${seccionesPendientes.length} de ${SECCIONES_PERFIL.length} secciones. Lo que respondió ya está en la ficha.`}
-            </p>
-          </div>
-          <div className="mt-4 flex gap-1">
-            {seccionesCompletitud.map((s) => (
-              <span
-                key={s.key}
-                className={`h-1.5 flex-1 rounded-[3px] ${s.completadoAt ? "bg-[#9CAF88]" : "bg-muted"}`}
-              />
-            ))}
-          </div>
-        </div>
-        <div>
-          {seccionesCompletitud.map((s) => (
-            <div
-              key={s.key}
-              className={`flex items-center gap-3 border-b border-[#F2EBF0] px-[22px] py-[14px] last:border-0 ${
-                !s.completadoAt ? "bg-[#FBF1EF] shadow-[inset_3px_0_0_#B4483A]" : ""
-              }`}
-            >
-              <span
-                className={`flex size-5 shrink-0 items-center justify-center rounded-[6px] border ${
-                  s.completadoAt
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-input bg-card"
-                }`}
-              >
-                {s.completadoAt && <Check className="size-3" strokeWidth={2.2} />}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-[13.5px] font-semibold">{s.label}</p>
-                <p className="mt-px truncate text-[11.5px] text-muted-foreground">
-                  {s.completadoAt ? formatoFechaCorta(s.completadoAt) : s.detalle}
-                </p>
-              </div>
-              {!s.completadoAt && (
-                <PedirSeccionButton
-                  token={invitacion.token}
-                  telefono={paciente.telefono}
-                  link={linkInvitacion}
-                  texto={`Hola ${paciente.nombre}! Nos falta ${s.label.toLowerCase()} para completar tu perfil en NutrIA:`}
-                  label="Pedir"
-                />
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-[18px]">
-        {seccionesPendientes.length > 0 && (
-          <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_1px_2px_rgba(36,28,44,.04),0_14px_32px_-20px_rgba(36,28,44,.16)]">
-            <div className="border-b border-[#F2EBF0] px-[18px] pt-4 pb-3.5">
-              <p className="text-[10.5px] font-bold tracking-[.13em] text-muted-foreground uppercase">
-                Pedir lo que falta
-              </p>
-              <p className="mt-1.5 text-[13px] text-muted-foreground text-pretty">
-                El link abre directo en lo que falta. No vuelve a preguntar lo que ya respondió.
-              </p>
-            </div>
-            <div className="flex flex-col gap-2.5 px-[18px] pt-3.5 pb-4">
-              <div className="flex flex-wrap gap-1.5">
-                {seccionesPendientes.map((s) => (
-                  <span
-                    key={s.key}
-                    className="inline-flex items-center rounded-[7px] border border-[#E4D5E2] bg-accent px-2.5 py-1 text-[11.5px] font-bold text-primary"
-                  >
-                    {s.label}
-                  </span>
-                ))}
-              </div>
-              <PedirSeccionButton
-                token={invitacion.token}
-                telefono={paciente.telefono}
-                link={linkInvitacion}
-                texto={`Hola ${paciente.nombre}! Te dejo el link para terminar de completar tu perfil en NutrIA:`}
-                label="Reenviar solo lo pendiente"
-                variant="default"
-              />
-            </div>
-          </div>
-        )}
-
-        {eventosInvitacion && eventosInvitacion.length > 0 && (
-          <div className="rounded-2xl border border-border bg-card p-[18px] shadow-[0_1px_2px_rgba(36,28,44,.04)]">
+  // ---------- Tab Datos ----------
+  const resumenLateral = invitacion && linkInvitacion && (
+    <>
+      {seccionesPendientes.length > 0 && (
+        <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_1px_2px_rgba(36,28,44,.04),0_14px_32px_-20px_rgba(36,28,44,.16)]">
+          <div className="border-b border-[#F2EBF0] px-[18px] pt-4 pb-3.5">
             <p className="text-[10.5px] font-bold tracking-[.13em] text-muted-foreground uppercase">
-              Actividad del link
+              Pedir lo que falta
             </p>
-            <ul className="mt-3 flex flex-col gap-[11px]">
-              {eventosInvitacion.map((e, i) => (
-                <li key={i} className="flex items-baseline gap-2.5 text-[12.5px]">
-                  <span className="mt-[5px] size-1.5 shrink-0 rounded-full bg-[#9CAF88]" />
-                  <span className="min-w-0 flex-1 text-[#4C4455] text-pretty">
-                    {e.tipo === "seccion_completada"
-                      ? `Completó ${(SECCION_LABEL[e.seccion ?? ""] ?? e.seccion)?.toLowerCase()}`
-                      : (EVENTO_DESCRIPCION[e.tipo] ?? e.tipo)}
-                  </span>
-                  <span className="shrink-0 tabular-nums whitespace-nowrap text-muted-foreground">
-                    {formatoFechaCorta(e.created_at)}
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <p className="mt-1.5 text-[13px] text-muted-foreground text-pretty">
+              El link abre directo en lo que falta. No vuelve a preguntar lo que ya respondió.
+            </p>
           </div>
-        )}
-      </div>
-    </div>
+          <div className="flex flex-col gap-2.5 px-[18px] pt-3.5 pb-4">
+            <div className="flex flex-wrap gap-1.5">
+              {seccionesPendientes.map((s) => (
+                <span
+                  key={s.key}
+                  className="inline-flex items-center rounded-[7px] border border-[#E4D5E2] bg-accent px-2.5 py-1 text-[11.5px] font-bold text-primary"
+                >
+                  {s.label}
+                </span>
+              ))}
+            </div>
+            <PedirSeccionButton
+              token={invitacion.token}
+              telefono={paciente.telefono}
+              link={linkInvitacion}
+              texto={`Hola ${paciente.nombre}! Te dejo el link para terminar de completar tu perfil en NutrIA:`}
+              label="Reenviar solo lo pendiente"
+              variant="default"
+            />
+          </div>
+        </div>
+      )}
+
+      {eventosInvitacion && eventosInvitacion.length > 0 && (
+        <div className="rounded-2xl border border-border bg-card p-[18px] shadow-[0_1px_2px_rgba(36,28,44,.04)]">
+          <p className="text-[10.5px] font-bold tracking-[.13em] text-muted-foreground uppercase">
+            Actividad del link
+          </p>
+          <ul className="mt-3 flex flex-col gap-[11px]">
+            {eventosInvitacion.slice(0, 8).map((e, i) => (
+              <li key={i} className="flex items-baseline gap-2.5 text-[12.5px]">
+                <span className="mt-[5px] size-1.5 shrink-0 rounded-full bg-[#9CAF88]" />
+                <span className="min-w-0 flex-1 text-[#4C4455] text-pretty">
+                  {e.tipo === "seccion_completada"
+                    ? `Completó ${(SECCION_LABEL[e.seccion ?? ""] ?? e.seccion)?.toLowerCase()}`
+                    : (EVENTO_DESCRIPCION[e.tipo] ?? e.tipo)}
+                </span>
+                <span className="shrink-0 tabular-nums whitespace-nowrap text-muted-foreground">
+                  {formatoFechaCorta(e.created_at)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </>
+  );
+
+  const fechaNacimientoTexto = paciente.fecha_nacimiento
+    ? `${formatoFechaCorta(paciente.fecha_nacimiento)}${edad !== null ? ` · ${edad} años` : ""}`
+    : null;
+
+  const datosContent = (
+    <DatosEditablesPanel
+      pacienteId={paciente.id}
+      porcentaje={porcentajeCompletitud}
+      barra={seccionesCompletitud.map((s) => ({ key: s.key, completo: !!s.completadoAt }))}
+      notasGenerales={paciente.notas_generales}
+      resumenLateral={resumenLateral}
+      secciones={[
+        {
+          key: "contacto",
+          titulo: "Contacto",
+          origen: paciente.contacto_completado_at
+            ? `Cargado el ${formatoFechaCorta(paciente.contacto_completado_at)}`
+            : "Sin completar",
+          campos: [
+            { label: "Teléfono", valor: paciente.telefono },
+            { label: "Email", valor: paciente.email },
+            { label: "Obra social", valor: paciente.obra_social },
+          ],
+          valoresCrudos: {
+            telefono: paciente.telefono ?? "",
+            email: paciente.email ?? "",
+            obra_social: paciente.obra_social ?? "",
+          },
+        },
+        {
+          key: "personales",
+          titulo: "Datos personales",
+          origen: paciente.datos_personales_completado_at
+            ? `Cargado el ${formatoFechaCorta(paciente.datos_personales_completado_at)}`
+            : "Sin completar",
+          campos: [
+            { label: "Fecha de nacimiento", valor: fechaNacimientoTexto },
+            { label: "Sexo biológico", valor: paciente.sexo_biologico },
+            { label: "DNI", valor: paciente.dni },
+            { label: "Sede", valor: paciente.sede },
+            { label: "Quién lo derivó", valor: paciente.quien_derivo },
+            { label: "Motivo de consulta", valor: paciente.motivo_consulta },
+          ],
+          valoresCrudos: {
+            fecha_nacimiento: paciente.fecha_nacimiento ?? "",
+            sexo_biologico: paciente.sexo_biologico ?? "",
+            dni: paciente.dni ?? "",
+            sede: paciente.sede ?? "",
+            quien_derivo: paciente.quien_derivo ?? "",
+            motivo_consulta: paciente.motivo_consulta ?? "",
+          },
+        },
+        {
+          key: "antecedentes",
+          titulo: "Antecedentes",
+          origen: paciente.antecedentes_completado_at
+            ? `Cargado el ${formatoFechaCorta(paciente.antecedentes_completado_at)}`
+            : "Sin completar",
+          campos: [
+            { label: "Condiciones", valor: paciente.condiciones },
+            { label: "Alergias", valor: paciente.alergias },
+            { label: "Medicación", valor: paciente.medicacion },
+          ],
+          valoresCrudos: {
+            condiciones: paciente.condiciones ?? "",
+            alergias: paciente.alergias ?? "",
+            medicacion: paciente.medicacion ?? "",
+          },
+        },
+        {
+          key: "habitos",
+          titulo: "Hábitos",
+          origen: paciente.habitos_completado_at
+            ? `Cargado el ${formatoFechaCorta(paciente.habitos_completado_at)}`
+            : "Sin completar",
+          campos: [
+            { label: "Comidas por día", valor: paciente.habitos_comidas },
+            { label: "Quién cocina", valor: paciente.habitos_quien_cocina },
+            { label: "Actividad física", valor: paciente.habitos_movimiento },
+          ],
+          valoresCrudos: {
+            habitos_comidas: paciente.habitos_comidas ?? "",
+            habitos_quien_cocina: paciente.habitos_quien_cocina ?? "",
+            habitos_movimiento: paciente.habitos_movimiento ?? "",
+          },
+        },
+      ]}
+    />
   );
 
   return (
@@ -499,12 +675,13 @@ export default async function FichaPacientePage(
       </div>
 
       <div className="px-10 pt-6 pb-16">
-        <div className="max-w-[900px]">
+        <div className="max-w-[980px]">
           <FichaTabs
+            consulta={consultaContent}
             historia={historiaContent}
-            laboratorios={laboratoriosContent}
+            archivos={archivosContent}
             plan={planContent}
-            completitud={completitudContent}
+            datos={datosContent}
           />
         </div>
       </div>
