@@ -29,13 +29,16 @@ export default async function ChatsPage(props: PageProps<"/app/chats">) {
   const pacienteIds = conversaciones
     .filter((c) => c.tipo === "paciente")
     .map((c) => c.id);
-  const { data: turnos } = pacienteIds.length
+  const { data: turnos, error: turnosError } = pacienteIds.length
     ? await supabase
         .from("turnos")
         .select("paciente_id, fecha_hora")
         .in("paciente_id", pacienteIds)
         .neq("estado", "cancelado")
-    : { data: [] as { paciente_id: string; fecha_hora: string }[] };
+    : { data: [] as { paciente_id: string; fecha_hora: string }[], error: null };
+  if (turnosError) {
+    console.error("[ChatsPage] select de turnos falló:", turnosError);
+  }
 
   const ahora = new Date();
   const proximoTurnoPorPaciente: Record<string, string> = {};
