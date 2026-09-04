@@ -305,48 +305,55 @@ export default async function FichaPacientePage(
   );
 
   const completitudContent = invitacion && linkInvitacion && (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-      <div className="rounded-2xl border border-border bg-card p-5 lg:col-span-2">
-        <div className="mb-4 flex items-baseline justify-between">
-          <span className="font-heading text-[27px] tracking-[-.015em] tabular-nums text-primary">
-            {porcentajeCompletitud}%
-          </span>
-          <span className="text-sm text-muted-foreground">
-            {seccionesPendientes.length === 0
-              ? "Perfil completo."
-              : `Falta ${seccionesPendientes.length} de ${SECCIONES_PERFIL.length} secciones. Lo que respondió ya está en la ficha.`}
-          </span>
+    <div className="grid grid-cols-1 items-start gap-[18px] lg:grid-cols-[minmax(0,1fr)_330px]">
+      <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_1px_2px_rgba(36,28,44,.04),0_14px_32px_-20px_rgba(36,28,44,.16)]">
+        <div className="border-b border-[#F2EBF0] px-[22px] pt-5 pb-[18px]">
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <p className="text-[10.5px] font-bold tracking-[.13em] text-muted-foreground uppercase">
+                Completitud del perfil
+              </p>
+              <p className="mt-2 font-heading text-[38px] leading-none tracking-[-.015em] tabular-nums">
+                {porcentajeCompletitud}%
+              </p>
+            </div>
+            <p className="max-w-[200px] shrink-0 text-right text-[12.5px] text-muted-foreground text-pretty">
+              {seccionesPendientes.length === 0
+                ? "Perfil completo."
+                : `Falta ${seccionesPendientes.length} de ${SECCIONES_PERFIL.length} secciones. Lo que respondió ya está en la ficha.`}
+            </p>
+          </div>
+          <div className="mt-4 flex gap-1">
+            {seccionesCompletitud.map((s) => (
+              <span
+                key={s.key}
+                className={`h-1.5 flex-1 rounded-[3px] ${s.completadoAt ? "bg-[#9CAF88]" : "bg-muted"}`}
+              />
+            ))}
+          </div>
         </div>
-        <div className="mb-4 flex gap-1">
+        <div>
           {seccionesCompletitud.map((s) => (
             <div
               key={s.key}
-              className={`h-1.5 flex-1 rounded-full ${s.completadoAt ? "bg-primary" : "bg-muted"}`}
-            />
-          ))}
-        </div>
-        <div className="flex flex-col divide-y divide-border">
-          {seccionesCompletitud.map((s) => (
-            <div
-              key={s.key}
-              className={`flex items-center justify-between gap-3 py-3 ${
-                !s.completadoAt ? "border-l-2 border-l-destructive pl-3" : ""
+              className={`flex items-center gap-3 border-b border-[#F2EBF0] px-[22px] py-[14px] last:border-0 ${
+                !s.completadoAt ? "bg-[#FBF1EF] shadow-[inset_3px_0_0_#B4483A]" : ""
               }`}
             >
-              <div className="flex items-start gap-2.5">
-                <span
-                  className={`mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full ${
-                    s.completadoAt ? "bg-primary text-primary-foreground" : "border border-input"
-                  }`}
-                >
-                  {s.completadoAt && <Check className="size-3" />}
-                </span>
-                <div>
-                  <p className="font-medium">{s.label}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {s.completadoAt ? formatoFechaCorta(s.completadoAt) : s.detalle}
-                  </p>
-                </div>
+              <span
+                className={`flex size-5 shrink-0 items-center justify-center rounded-[6px] border ${
+                  s.completadoAt
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-input bg-card"
+                }`}
+              >
+                {s.completadoAt && <Check className="size-3" strokeWidth={2.2} />}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[13.5px] font-semibold">{s.label}</p>
+                <p className="mt-px truncate text-[11.5px] text-muted-foreground">
+                  {s.completadoAt ? formatoFechaCorta(s.completadoAt) : s.detalle}
+                </p>
               </div>
               {!s.completadoAt && (
                 <PedirSeccionButton
@@ -362,48 +369,55 @@ export default async function FichaPacientePage(
         </div>
       </div>
 
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-[18px]">
         {seccionesPendientes.length > 0 && (
-          <div className="rounded-2xl border border-border bg-card p-5">
-            <p className="mb-2 text-xs font-medium tracking-wide text-muted-foreground">
-              PEDIR LO QUE FALTA
-            </p>
-            <p className="mb-3 text-sm text-muted-foreground">
-              El link abre directo en lo que falta. No vuelve a preguntar lo que ya respondió.
-            </p>
-            <div className="mb-3 flex flex-wrap gap-1.5">
-              {seccionesPendientes.map((s) => (
-                <Badge key={s.key} variant="outline">
-                  {s.label}
-                </Badge>
-              ))}
+          <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_1px_2px_rgba(36,28,44,.04),0_14px_32px_-20px_rgba(36,28,44,.16)]">
+            <div className="border-b border-[#F2EBF0] px-[18px] pt-4 pb-3.5">
+              <p className="text-[10.5px] font-bold tracking-[.13em] text-muted-foreground uppercase">
+                Pedir lo que falta
+              </p>
+              <p className="mt-1.5 text-[13px] text-muted-foreground text-pretty">
+                El link abre directo en lo que falta. No vuelve a preguntar lo que ya respondió.
+              </p>
             </div>
-            <PedirSeccionButton
-              token={invitacion.token}
-              telefono={paciente.telefono}
-              link={linkInvitacion}
-              texto={`Hola ${paciente.nombre}! Te dejo el link para terminar de completar tu perfil en NutrIA:`}
-              label="Reenviar solo lo pendiente"
-              variant="default"
-            />
+            <div className="flex flex-col gap-2.5 px-[18px] pt-3.5 pb-4">
+              <div className="flex flex-wrap gap-1.5">
+                {seccionesPendientes.map((s) => (
+                  <span
+                    key={s.key}
+                    className="inline-flex items-center rounded-[7px] border border-[#E4D5E2] bg-accent px-2.5 py-1 text-[11.5px] font-bold text-primary"
+                  >
+                    {s.label}
+                  </span>
+                ))}
+              </div>
+              <PedirSeccionButton
+                token={invitacion.token}
+                telefono={paciente.telefono}
+                link={linkInvitacion}
+                texto={`Hola ${paciente.nombre}! Te dejo el link para terminar de completar tu perfil en NutrIA:`}
+                label="Reenviar solo lo pendiente"
+                variant="default"
+              />
+            </div>
           </div>
         )}
 
         {eventosInvitacion && eventosInvitacion.length > 0 && (
-          <div className="rounded-2xl border border-border bg-card p-5">
-            <p className="mb-3 text-xs font-medium tracking-wide text-muted-foreground">
-              ACTIVIDAD DEL LINK
+          <div className="rounded-2xl border border-border bg-card p-[18px] shadow-[0_1px_2px_rgba(36,28,44,.04)]">
+            <p className="text-[10.5px] font-bold tracking-[.13em] text-muted-foreground uppercase">
+              Actividad del link
             </p>
-            <ul className="flex flex-col gap-2.5">
+            <ul className="mt-3 flex flex-col gap-[11px]">
               {eventosInvitacion.map((e, i) => (
-                <li key={i} className="flex items-start justify-between gap-3 text-sm">
-                  <span className="flex items-start gap-2">
-                    <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary" />
+                <li key={i} className="flex items-baseline gap-2.5 text-[12.5px]">
+                  <span className="mt-[5px] size-1.5 shrink-0 rounded-full bg-[#9CAF88]" />
+                  <span className="min-w-0 flex-1 text-[#4C4455] text-pretty">
                     {e.tipo === "seccion_completada"
                       ? `Completó ${(SECCION_LABEL[e.seccion ?? ""] ?? e.seccion)?.toLowerCase()}`
                       : (EVENTO_DESCRIPCION[e.tipo] ?? e.tipo)}
                   </span>
-                  <span className="shrink-0 text-xs text-muted-foreground">
+                  <span className="shrink-0 tabular-nums whitespace-nowrap text-muted-foreground">
                     {formatoFechaCorta(e.created_at)}
                   </span>
                 </li>

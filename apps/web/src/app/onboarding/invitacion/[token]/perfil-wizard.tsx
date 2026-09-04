@@ -29,6 +29,14 @@ const ESTIMADO_SEGUNDOS: Record<Seccion, number> = {
   consentimiento: 10,
 };
 
+const PASO_CORTO: Record<Seccion, string> = {
+  datos_personales: "Tus datos",
+  contacto: "Contacto",
+  antecedentes: "Tu salud",
+  habitos: "Tus hábitos",
+  consentimiento: "Listo",
+};
+
 const TITULO: Record<Seccion, string> = {
   datos_personales: "Empecemos por lo básico",
   contacto: "¿Cómo te contactamos?",
@@ -126,6 +134,11 @@ export function PerfilWizard({
     }
   }
 
+  function atras() {
+    setError(null);
+    setPasoIdx((i) => Math.max(0, i - 1));
+  }
+
   function continuar() {
     if (seccion === "datos_personales" && !valores.nombre.trim()) {
       setError("Contanos cómo te llamás para seguir.");
@@ -155,24 +168,22 @@ export function PerfilWizard({
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-secondary p-6">
-      <Card className="flex w-full max-w-lg flex-col gap-5 p-6">
-        <div className="flex items-center gap-3">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-semibold text-accent-foreground">
-            {profesionalNombre
-              .split(" ")
-              .map((p) => p[0])
-              .slice(0, 2)
-              .join("")
-              .toUpperCase()}
+    <div className="flex min-h-screen flex-col items-center justify-center gap-3.5 bg-background p-6">
+      <Card className="w-full max-w-[420px] gap-0 overflow-hidden rounded-2xl border-border p-0 shadow-[0_1px_2px_rgba(36,28,44,.04),0_14px_32px_-20px_rgba(36,28,44,.16)]">
+        <div className="border-b border-[#F2EBF0] px-[22px] pt-[18px] pb-4">
+          <div className="flex items-center gap-[11px]">
+            <div className="flex size-[38px] shrink-0 items-center justify-center rounded-full bg-accent text-[12.5px] font-bold text-primary">
+              {profesionalNombre
+                .split(" ")
+                .map((p) => p[0])
+                .slice(0, 2)
+                .join("")
+                .toUpperCase()}
+            </div>
+            <p className="truncate text-[13.5px] font-semibold">{profesionalNombre}</p>
           </div>
-          <div>
-            <p className="text-sm font-semibold">{profesionalNombre}</p>
-          </div>
-        </div>
 
-        <div className="flex flex-col gap-1.5">
-          <div className="flex gap-1">
+          <div className="mt-[18px] flex gap-1">
             {ORDEN.map((s, i) => (
               <div
                 key={s}
@@ -186,17 +197,24 @@ export function PerfilWizard({
               />
             ))}
           </div>
-          <p className="text-xs text-muted-foreground">
-            Paso {numeroGlobal} de {ORDEN.length} · queda ~{restante}s
+          <div className="mt-[9px] flex items-baseline justify-between gap-3">
+            <span className="text-xs font-semibold text-[#4C4455]">{PASO_CORTO[seccion]}</span>
+            <span className="shrink-0 text-[11.5px] tabular-nums text-muted-foreground">
+              Paso {numeroGlobal} de {ORDEN.length} · queda ~{restante}s
+            </span>
+          </div>
+        </div>
+
+        <div className="px-[22px] py-6">
+          <p className="font-heading text-[24px] leading-[1.2] tracking-[-.008em] text-pretty">
+            {TITULO[seccion]}
+          </p>
+          <p className="mt-[7px] text-[13.5px] leading-[1.5] text-muted-foreground text-pretty">
+            {SUBTITULO[seccion]}
           </p>
         </div>
 
-        <div>
-          <h1 className="text-xl font-bold text-primary">{TITULO[seccion]}</h1>
-          <p className="text-sm text-muted-foreground">{SUBTITULO[seccion]}</p>
-        </div>
-
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-5 px-[22px] pb-[22px]">
           {seccion === "datos_personales" && (
             <>
               <div className="flex flex-col gap-1.5">
@@ -235,10 +253,10 @@ export function PerfilWizard({
                       key={opcion}
                       type="button"
                       onClick={() => actualizar("sexo_biologico", opcion)}
-                      className={`flex-1 rounded-lg border px-4 py-2 text-sm font-medium capitalize transition-colors ${
+                      className={`flex-1 rounded-[10px] border px-3 py-3.5 text-sm font-semibold capitalize transition-colors ${
                         valores.sexo_biologico === opcion
-                          ? "border-primary bg-primary/5 text-primary"
-                          : "border-input text-foreground hover:bg-muted"
+                          ? "border-primary bg-accent text-primary"
+                          : "border-input text-foreground hover:border-[#C8BFC9]"
                       }`}
                     >
                       {opcion}
@@ -353,14 +371,21 @@ export function PerfilWizard({
           )}
 
           {seccion === "consentimiento" && (
-            <label className="group/field-label flex items-start gap-3 rounded-lg border border-input p-3">
+            <label
+              className={`group/field-label flex items-start gap-2.5 rounded-xl border p-4 transition-colors ${
+                valores.consentimiento_datos
+                  ? "border-[#E4D5E2] bg-accent"
+                  : "border-input hover:border-[#C8BFC9]"
+              }`}
+            >
               <Checkbox
+                className="mt-0.5"
                 checked={valores.consentimiento_datos}
                 onCheckedChange={(checked) =>
                   actualizar("consentimiento_datos", checked === true)
                 }
               />
-              <span className="text-sm">
+              <span className="text-[13px] leading-[1.5] text-[#4C4455] text-pretty">
                 Acepto que mis datos de salud se usen para armar mi plan
                 alimentario y hacerle seguimiento con mi nutricionista.
               </span>
@@ -369,15 +394,32 @@ export function PerfilWizard({
 
           {error && <p className="text-sm text-destructive">{error}</p>}
 
-          <Button onClick={continuar} disabled={pending} className="gap-1.5">
-            {pending
-              ? "Guardando…"
-              : seccion === "consentimiento"
-                ? "Finalizar"
-                : "Continuar →"}
-          </Button>
+          <div className="flex items-center gap-2.5">
+            {pasoIdx > 0 && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={atras}
+                disabled={pending}
+                className="shrink-0 gap-1.5"
+              >
+                Atrás
+              </Button>
+            )}
+            <Button onClick={continuar} disabled={pending} className="flex-1 gap-1.5">
+              {pending
+                ? "Guardando…"
+                : seccion === "consentimiento"
+                  ? "Finalizar"
+                  : "Continuar →"}
+            </Button>
+          </div>
         </div>
       </Card>
+
+      <p className="flex items-center gap-1.5 text-center text-xs text-muted-foreground">
+        Podés cerrar y seguir después. Tus respuestas quedan guardadas.
+      </p>
     </div>
   );
 }
