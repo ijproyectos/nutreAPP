@@ -17,7 +17,7 @@ import { CobrosTabs } from "./cobros-tabs";
 
 const ESTADO_ESTILO: Record<string, string> = {
   pendiente: "border-transparent bg-accent text-accent-foreground",
-  cobrado: "border-transparent bg-emerald-100 text-emerald-800",
+  cobrado: "border-transparent bg-positive text-positive-foreground",
 };
 
 const ESTADO_LABEL: Record<string, string> = {
@@ -31,6 +31,10 @@ export default async function CobrosPage(props: PageProps<"/app/cobros">) {
   const estadoParam = (searchParams?.estado as string | undefined) ?? "pendiente";
   const estado =
     estadoParam === "pendiente" || estadoParam === "cobrado" ? estadoParam : undefined;
+  // Deep-link desde el chat de un paciente (chip "Cobrar" del rediseño) —
+  // /app/cobros?paciente=<id> abre directo el diálogo con ese paciente
+  // preseleccionado.
+  const pacienteIdInicial = (searchParams?.paciente as string | undefined) || null;
 
   const [cobros, resumen, { data: pacientes, error: pacientesError }] = await Promise.all([
     obtenerCobros(supabase, estado),
@@ -54,7 +58,7 @@ export default async function CobrosPage(props: PageProps<"/app/cobros">) {
             Registro manual de cobros — sin cobro online integrado todavía.
           </p>
         </div>
-        <NuevoCobroDialog pacientes={pacientes ?? []} />
+        <NuevoCobroDialog pacientes={pacientes ?? []} pacienteIdInicial={pacienteIdInicial} />
       </div>
 
       <CobrosTabs activa="cobros" />

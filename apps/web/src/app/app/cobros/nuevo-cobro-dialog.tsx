@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { CircleDollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -27,17 +27,26 @@ import { crearCobro, obtenerConsultasDePaciente } from "./actions";
 // problema.
 export function NuevoCobroDialog({
   pacientes,
+  pacienteIdInicial,
 }: {
   pacientes: { id: string; nombre: string }[];
+  /** /app/cobros?paciente=<id> — deep-link desde el chip "Cobrar" del
+   * chat de un paciente (rediseño). Abre el diálogo con ese paciente
+   * preseleccionado en vez de obligar a elegirlo de nuevo. */
+  pacienteIdInicial?: string | null;
 }) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
-  const [pacienteId, setPacienteId] = useState("");
+  // Lazy init (no useEffect) para abrir directo cuando llega ?paciente= —
+  // así el único setState síncrono queda en el render inicial, no en un
+  // efecto (ver el useEffect de abajo, que solo dispara el fetch de
+  // consultas y limpia la URL).
+  const [open, setOpen] = useState(() => !!pacienteIdInicial);
+  const [pacienteId, setPacienteId] = useState(() => pacienteIdInicial ?? "");
   const [monto, setMonto] = useState("");
   const [fechaVencimiento, setFechaVencimiento] = useState("");
   const [consultaId, setConsultaId] = useState("");
   const [consultas, setConsultas] = useState<{ id: string; fecha: string }[]>([]);
-  const [cargandoConsultas, setCargandoConsultas] = useState(false);
+  const [cargandoConsultas, setCargandoConsultas] = useState(() => !!pacienteIdInicial);
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -60,6 +69,21 @@ export function NuevoCobroDialog({
     setCargandoConsultas(false);
     setConsultas(propias);
   }
+
+  // Deep-link desde /app/chats: `open`/`pacienteId`/`cargandoConsultas` ya
+  // arrancan con el estado correcto (init perezoso arriba, no acá) — este
+  // efecto solo dispara el fetch de sus consultas (setState recién en el
+  // .then, no síncrono en el cuerpo del efecto) y limpia el query param
+  // para que un refresh no vuelva a forzar nada.
+  useEffect(() => {
+    if (!pacienteIdInicial) return;
+    router.replace("/app/cobros");
+    obtenerConsultasDePaciente(pacienteIdInicial).then((propias) => {
+      setCargandoConsultas(false);
+      setConsultas(propias);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo al montar con el id que trajo la navegación
+  }, [pacienteIdInicial]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();

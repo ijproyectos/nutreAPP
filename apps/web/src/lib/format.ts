@@ -27,6 +27,16 @@ export function formatoFechaCorta(fecha: string | Date): string {
   }).format(d);
 }
 
+/** Igual que `formatoFechaCorta` pero sin año — para chips cortos donde el
+ * año sobra (ej. "Turno 28 ago" en la lista de Chats, rediseño visual). */
+export function formatoFechaSinAnio(fecha: string | Date): string {
+  const d = typeof fecha === "string" ? new Date(fecha) : fecha;
+  return new Intl.DateTimeFormat("es-AR", {
+    day: "numeric",
+    month: "short",
+  }).format(d);
+}
+
 /** Para precargar un `<input type="date">` a partir de un timestamp ISO —
  * usa getters locales (no UTC) a propósito: esto corre en el navegador del
  * profesional, así que "local" es su zona horaria real, que es la que
