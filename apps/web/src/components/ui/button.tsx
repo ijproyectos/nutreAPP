@@ -4,13 +4,23 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  // Radio 10px explícito (no rounded-lg/--radius-lg) — el sistema de
+  // diseño lo pide exacto para el componente que más se repite en la app.
+  "group/button inline-flex shrink-0 items-center justify-center rounded-[10px] border border-transparent bg-clip-padding text-[13px] font-semibold whitespace-nowrap transition-all outline-none select-none active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/80",
+        // Botón primario — fondo marca, hover más oscuro + sombra un poco
+        // más marcada, activo aplana la sombra (además del translate-y
+        // que ya suma la clase base).
+        default:
+          "bg-primary text-primary-foreground shadow-[0_1px_2px_rgba(60,32,62,.25)] hover:bg-[#4A2E4C] hover:shadow-[0_2px_6px_rgba(60,32,62,.28)] active:bg-[#3F2741] active:shadow-none",
+        // Botón secundario — el hover NUNCA cambia el fondo, solo oscurece
+        // el borde y suma una sombra chica; el fondo blanco→gris pasa
+        // recién en :active. `dark:` queda de la base shadcn (sin uso en
+        // este proyecto, no hay toggle de dark mode).
         outline:
-          "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
+          "border-input bg-background text-foreground hover:border-[#C8BFC9] hover:shadow-[0_1px_3px_rgba(36,28,44,.07)] active:bg-muted active:border-[#C8BFC9] aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
         secondary:
           "bg-secondary text-secondary-foreground hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_5%)] aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
         ghost:

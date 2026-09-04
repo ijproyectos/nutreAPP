@@ -1,10 +1,15 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Lora } from "next/font/google";
+import { Geist_Mono, Instrument_Sans, Newsreader } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// Rediseño visual definitivo (~/Documents/Pantallas/Nuevo/…, "NutrIA
+// Sistema de Diseño.dc.html"): Instrument Sans es la tipografía de toda
+// la interfaz operable; Newsreader es la voz de marca y aparece poco
+// (saludo de Inicio, títulos de página/sección, una cifra por tarjeta).
+const instrumentSans = Instrument_Sans({
+  variable: "--font-instrument-sans",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
 });
 
 const geistMono = Geist_Mono({
@@ -12,11 +17,11 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-// Serif para títulos ("Buenas noches, Paula Denise", logotype NutrIA) —
-// matchea las capturas del diseño original.
-const lora = Lora({
-  variable: "--font-lora",
+const newsreader = Newsreader({
+  variable: "--font-newsreader",
   subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  style: ["normal", "italic"],
 });
 
 export const metadata: Metadata = {
@@ -28,7 +33,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${lora.variable} h-full antialiased`}
+      className={`${instrumentSans.variable} ${geistMono.variable} ${newsreader.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>

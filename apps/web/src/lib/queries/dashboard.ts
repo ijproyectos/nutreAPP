@@ -61,6 +61,7 @@ export async function obtenerContinuidad(
 export type TurnoDeHoy = {
   id: string;
   fechaHora: string;
+  pacienteId: string;
   pacienteNombre: string;
   tipo: string;
   estado: string;
@@ -68,7 +69,10 @@ export type TurnoDeHoy = {
 };
 
 /** Agenda de hoy — turnos del día calendario actual, con el brief de
- *  continuidad (tabla `consultas`) del que esté en curso, si existe. */
+ *  continuidad (tabla `consultas`) más reciente de cada uno, si existe.
+ *  Antes solo se traía el brief del turno "en curso" (la única fila que
+ *  se mostraba destapada); con el rediseño visual cualquier turno se
+ *  puede abrir para ver el suyo, así que hace falta el de todos. */
 export async function obtenerAgendaDeHoy(
   supabase: Client
 ): Promise<TurnoDeHoy[]> {
@@ -79,34 +83,34 @@ export async function obtenerAgendaDeHoy(
 
   const { data } = await supabase
     .from("turnos")
-    .select("id, fecha_hora, tipo, estado, pacientes(nombre)")
+    .select("id, fecha_hora, tipo, estado, paciente_id, pacientes(nombre)")
     .gte("fecha_hora", inicio.toISOString())
     .lte("fecha_hora", fin.toISOString())
     .neq("estado", "cancelado")
     .order("fecha_hora", { ascending: true });
 
   const turnos = data ?? [];
-  const enCursoId = turnos.find((t) => t.estado === "en_curso")?.id;
 
   const briefPorTurno = new Map<
     string,
     { acordado: string | null; completo: string | null; cambio: string | null }
   >();
 
-  if (enCursoId) {
-    const { data: consulta } = await supabase
+  if (turnos.length > 0) {
+    const { data: consultas } = await supabase
       .from("consultas")
       .select("turno_id, acordado, completo, cambio")
-      .eq("turno_id", enCursoId)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .in("turno_id", turnos.map((t) => t.id))
+      .order("created_at", { ascending: false });
 
-    if (consulta) {
-      briefPorTurno.set(consulta.turno_id, {
-        acordado: consulta.acordado,
-        completo: consulta.completo,
-        cambio: consulta.cambio,
+    // Orden desc + Map: la primera fila que se ve por turno_id es la más
+    // reciente, las siguientes con el mismo turno_id se ignoran solas.
+    for (const c of consultas ?? []) {
+      if (briefPorTurno.has(c.turno_id)) continue;
+      briefPorTurno.set(c.turno_id, {
+        acordado: c.acordado,
+        completo: c.completo,
+        cambio: c.cambio,
       });
     }
   }
@@ -114,6 +118,7 @@ export async function obtenerAgendaDeHoy(
   return turnos.map((t) => ({
     id: t.id,
     fechaHora: t.fecha_hora,
+    pacienteId: t.paciente_id,
     tipo: t.tipo,
     estado: t.estado,
     pacienteNombre:

@@ -7,9 +7,14 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
+  /* Antes "var(--font-sans)" — autorreferencia circular ya presente en
+     el archivo original, CSS inválido que hacía que la utilidad
+     `font-sans` cayera al stack default de Tailwind en vez de la
+     tipografía real de la marca. Corregido de paso al tocar este
+     archivo para el rediseño. */
+  --font-sans: var(--font-instrument-sans);
   --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-lora);
+  --font-heading: var(--font-newsreader);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -39,6 +44,23 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  /* Positivo (RF-040 "en orden"/confirmado) — no forma parte de la paleta
+     shadcn de base, se agrega acá porque el sistema de diseño lo trata
+     como un rol de color propio, no un verde genérico. */
+  --color-positive: var(--positive);
+  --color-positive-foreground: var(--positive-foreground);
+  /* Alerta media, separado de --accent: --accent ya se usa en todo el
+     código existente como "tinte de marca" (chips, avatares, fila
+     seleccionada); el sistema de diseño nuevo distingue ese rol del de
+     alerta media (ocre). Mantener los dos evita pisar el significado de
+     --accent en los ~30 call sites que ya lo usan como tinte de marca. */
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  /* Radio 10 en la base — igual al botón, que es el componente que más
+     se repite. sm≈6 (badge, spec real 7), md≈8 (input/nav, spec real 9),
+     xl=14, 2xl≈18 (tarjeta, spec real 16) — aproximado por escala en vez
+     de 6 variables sueltas; donde importa el px exacto (tarjeta, pill)
+     se usa un arbitrary value puntual, no este token. */
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -49,41 +71,46 @@
 }
 
 :root {
-  /* Paleta de marca NutrIA — tomada del mockup del profesional (sidebar
-     violeta/ciruela oscuro, fondo crema, acentos naranja/coral). Ver
-     docs/architecture.md. */
-  --background: oklch(0.97 0.014 70);
-  --foreground: oklch(0.22 0.02 30);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.22 0.02 30);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.22 0.02 30);
-  --primary: oklch(0.29 0.09 325);
-  --primary-foreground: oklch(0.98 0.01 70);
-  --secondary: oklch(0.96 0.012 60);
-  --secondary-foreground: oklch(0.25 0.02 30);
-  --muted: oklch(0.95 0.012 60);
-  --muted-foreground: oklch(0.52 0.02 40);
-  --accent: oklch(0.94 0.045 55);
-  --accent-foreground: oklch(0.5 0.14 50);
-  --destructive: oklch(0.55 0.16 25);
-  --border: oklch(0.9 0.015 60);
-  --input: oklch(0.9 0.015 60);
-  --ring: oklch(0.29 0.09 325);
-  --chart-1: oklch(0.55 0.16 25);
-  --chart-2: oklch(0.6 0.13 55);
-  --chart-3: oklch(0.29 0.09 325);
-  --chart-4: oklch(0.6 0.14 145);
-  --chart-5: oklch(0.7 0.02 60);
-  --radius: 0.75rem;
-  --sidebar: oklch(0.29 0.09 325);
-  --sidebar-foreground: oklch(0.95 0.015 70);
-  --sidebar-primary: oklch(0.55 0.16 25);
-  --sidebar-primary-foreground: oklch(0.98 0.01 70);
-  --sidebar-accent: oklch(0.35 0.09 325);
-  --sidebar-accent-foreground: oklch(0.97 0.015 70);
-  --sidebar-border: oklch(0.4 0.08 325 / 45%);
-  --sidebar-ring: oklch(0.6 0.1 320);
+  /* Rediseño visual definitivo — "NutrIA Sistema de Diseño.dc.html"
+     (~/Documents/Pantallas/Nuevo/…), valores hex exactos, no
+     aproximados. Ciruela de marca con traza en todos los neutros
+     (nunca crema amarilla pura). */
+  --background: #F8F5F7;
+  --foreground: #241C2C;
+  --card: #FFFFFF;
+  --card-foreground: #241C2C;
+  --popover: #FFFFFF;
+  --popover-foreground: #241C2C;
+  --primary: #5C3A5E;
+  --primary-foreground: #FFFFFF;
+  --secondary: #F4F0F3;
+  --secondary-foreground: #241C2C;
+  --muted: #F4F0F3;
+  --muted-foreground: #8C8395;
+  --accent: #F1E9EF;
+  --accent-foreground: #5C3A5E;
+  --warning: #FBEEE0;
+  --warning-foreground: #A8631F;
+  --positive: #EDF1E7;
+  --positive-foreground: #5A7645;
+  --destructive: #9E4436;
+  --border: #E8E0E6;
+  --input: #E3DAE2;
+  --ring: #5C3A5E;
+  --chart-1: #B4483A;
+  --chart-2: #C4792F;
+  --chart-3: #5C3A5E;
+  --chart-4: #9CAF88;
+  --chart-5: #8C8395;
+  --radius: 0.625rem;
+  --sidebar: #3D2740;
+  --sidebar-foreground: #D3C4D3;
+  --sidebar-primary: #5C3A5E;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: rgb(255 255 255 / 11%);
+  --sidebar-accent-foreground: #FFFFFF;
+  --sidebar-border: rgb(255 255 255 / 11%);
+  --sidebar-ring: #5C3A5E;
 }
 
 .dark {
@@ -101,6 +128,10 @@
   --muted-foreground: oklch(0.708 0 0);
   --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
+  --warning: oklch(0.269 0 0);
+  --warning-foreground: oklch(0.985 0 0);
+  --positive: oklch(0.269 0 0);
+  --positive-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
@@ -134,5 +165,13 @@
   h2,
   h3 {
     @apply font-heading;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+  }
+  /* Números tabulares por default en toda la interfaz — el sistema de
+     diseño lo pide para cualquier cifra (montos, fechas, horarios) para
+     que las columnas no bailen. */
+  :where(.tabular-nums, [data-numeric]) {
+    font-variant-numeric: tabular-nums;
   }
 }
