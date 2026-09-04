@@ -26,7 +26,7 @@ export default async function SuscripcionesPage() {
     <div className="flex flex-col gap-5 p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-primary">Suscripciones</h1>
+          <h1 className="font-heading text-2xl">Suscripciones</h1>
           <p className="text-sm text-muted-foreground">
             Cobro recurrente a pacientes — sin pasarela de pago, cada
             período se genera y se marca cobrado a mano.

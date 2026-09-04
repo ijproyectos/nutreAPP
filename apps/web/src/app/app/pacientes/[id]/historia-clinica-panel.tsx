@@ -141,7 +141,7 @@ export function HistoriaClinicaPanel({
                         className={
                           delta > 0
                             ? "text-xs font-normal text-destructive"
-                            : "text-xs font-normal text-emerald-600"
+                            : "text-xs font-normal text-positive-foreground"
                         }
                       >
                         {delta > 0 ? "↑" : "↓"} {Math.abs(delta).toFixed(1)}kg

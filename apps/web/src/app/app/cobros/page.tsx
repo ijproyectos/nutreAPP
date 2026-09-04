@@ -53,7 +53,7 @@ export default async function CobrosPage(props: PageProps<"/app/cobros">) {
     <div className="flex flex-col gap-5 p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-primary">Cobros</h1>
+          <h1 className="font-heading text-2xl">Cobros</h1>
           <p className="text-sm text-muted-foreground">
             Registro manual de cobros — sin cobro online integrado todavía.
           </p>

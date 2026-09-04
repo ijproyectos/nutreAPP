@@ -77,7 +77,7 @@ export function RegistroForm() {
         <p className="text-sm text-destructive">{state.error}</p>
       )}
       {state.status === "success" && (
-        <p className="text-sm text-emerald-600">
+        <p className="text-sm text-positive-foreground">
           ¡Guardado! Podés cargar otro.
         </p>
       )}

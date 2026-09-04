@@ -17,7 +17,7 @@ export default async function MiPlanPage() {
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 p-6">
       <div>
-        <h1 className="text-2xl font-bold text-primary">Mi plan</h1>
+        <h1 className="font-heading text-2xl">Mi plan</h1>
         {plan?.enviado_at && (
           <p className="text-sm text-muted-foreground">
             Enviado el {formatoFechaCorta(plan.enviado_at)}

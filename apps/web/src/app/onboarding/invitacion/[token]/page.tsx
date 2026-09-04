@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { TriangleAlert } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -37,11 +38,14 @@ export default async function InvitacionPage(
     return (
       <div className="flex min-h-screen items-center justify-center bg-secondary p-6">
         <Card className="flex w-full max-w-sm flex-col items-center gap-6 p-8 text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-accent text-2xl">
-            🥗
+          <div
+            className="flex size-14 items-center justify-center rounded-2xl font-heading text-2xl font-semibold text-[#3A2410] shadow-[0_2px_6px_rgba(0,0,0,.18)]"
+            style={{ background: "linear-gradient(150deg,#EFBB85,#C4792F)" }}
+          >
+            N
           </div>
           <div className="flex flex-col gap-1">
-            <h1 className="text-xl font-bold text-primary">
+            <h1 className="font-heading text-xl">
               Te invitaron a NutrIA
             </h1>
             <p className="text-sm text-muted-foreground">
@@ -64,10 +68,10 @@ export default async function InvitacionPage(
     return (
       <div className="flex min-h-screen items-center justify-center bg-secondary p-6">
         <Card className="flex w-full max-w-sm flex-col items-center gap-4 p-8 text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-destructive/10 text-2xl">
-            ⚠️
+          <div className="flex size-14 items-center justify-center rounded-2xl border border-[#EFCFC7] bg-[#FBEAE6] text-destructive">
+            <TriangleAlert className="size-6" strokeWidth={1.6} />
           </div>
-          <h1 className="text-xl font-bold text-primary">
+          <h1 className="font-heading text-xl">
             No pudimos vincular tu invitación
           </h1>
           <p className="text-sm text-muted-foreground">

@@ -5,7 +5,7 @@ import { SubirLaboratorioDialog } from "./subir-laboratorio-dialog";
 
 const ESTADO_ESTILO: Record<string, string> = {
   pendiente_revision: "bg-accent text-accent-foreground border-transparent",
-  validado: "bg-emerald-100 text-emerald-800 border-transparent",
+  validado: "bg-positive text-positive-foreground border-transparent",
   rechazado: "bg-destructive/10 text-destructive border-transparent",
 };
 
@@ -27,7 +27,7 @@ export default async function MisLaboratoriosPage() {
     <div className="flex flex-col gap-5 p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-primary">
+          <h1 className="font-heading text-2xl">
             Mis laboratorios
           </h1>
           <p className="text-sm text-muted-foreground">

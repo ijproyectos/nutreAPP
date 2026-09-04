@@ -31,7 +31,7 @@ const SECCION_LABEL: Record<string, string> = Object.fromEntries(
 );
 
 const ESTADO_ESTILO: Record<string, string> = {
-  validado: "bg-emerald-100 text-emerald-800 border-transparent",
+  validado: "bg-positive text-positive-foreground border-transparent",
   rechazado: "bg-destructive/10 text-destructive border-transparent",
 };
 

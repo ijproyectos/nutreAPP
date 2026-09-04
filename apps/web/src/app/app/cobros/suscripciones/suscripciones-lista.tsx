@@ -18,7 +18,7 @@ import type { SuscripcionPaciente } from "@/lib/queries/suscripciones";
 import { cambiarEstadoSuscripcion, generarCobroSuscripcion } from "./actions";
 
 const ESTADO_ESTILO: Record<string, string> = {
-  activa: "border-transparent bg-emerald-100 text-emerald-800",
+  activa: "border-transparent bg-positive text-positive-foreground",
   pausada: "border-transparent bg-accent text-accent-foreground",
   cancelada: "border-transparent bg-muted text-muted-foreground",
 };
