@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { ToggleSwitch } from "@/components/ui/toggle-switch";
 import { MODALIDAD_LABEL, type Clase, type ItemCatalogo, type Modalidad } from "@/lib/queries/catalogo";
 import { archivarServicio, crearOEditarServicio } from "./catalogo-actions";
+import { pill } from "./pill";
 
 const MODALIDADES: Modalidad[] = ["presencial_video", "videollamada", "domicilio", "digital"];
 
@@ -27,12 +28,6 @@ const ROTULO_DURACION: Record<Clase, string> = {
   paquete: "Qué incluye",
   producto: "Entrega",
 };
-
-function pill(activo: boolean) {
-  return activo
-    ? "border-[#D8C4D6] bg-accent text-primary"
-    : "border-input bg-background text-[#4C4455] hover:border-[#C8BFC9]";
-}
 
 // Handler manual (await directo) en vez de useActionState + <form
 // action={fn}>, mismo motivo que el resto de los diálogos de este
@@ -97,8 +92,13 @@ export function EditorServicioDialog({
   async function handleArchivar() {
     if (!item) return;
     setEnviando(true);
-    await archivarServicio(item.id, item.clase);
+    setError(null);
+    const resultado = await archivarServicio(item.id, item.clase);
     setEnviando(false);
+    if (resultado.status === "error") {
+      setError(resultado.error);
+      return;
+    }
     onOpenChange(false);
   }
 

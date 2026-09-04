@@ -109,11 +109,26 @@ export async function crearOEditarServicio(
   return { status: "success" };
 }
 
+export type ArchivarServicioState =
+  | { status: "idle" }
+  | { status: "error"; error: string }
+  | { status: "success" };
+
 /** Soft delete ("Archivar" en el mockup) — nunca un delete real, ver
  * el comentario de `cobros.servicio_id` en la migración 017: un cobro ya
  * generado con este servicio tiene que seguir resolviendo su nombre/
- * precio histórico. */
-export async function archivarServicio(id: string, clase: Clase): Promise<void> {
+ * precio histórico.
+ *
+ * Devuelve un discriminated union (no `void`) — hallazgo real del
+ * `pre-commit-orchestrator`: con `void`, el caller (`handleArchivar` en
+ * editor-servicio-dialog.tsx) cerraba el diálogo incondicionalmente
+ * después del `await`, sin poder saber si el update había fallado. El
+ * ítem seguía activo en el catálogo y el usuario veía el diálogo
+ * cerrarse como si el archivado hubiera funcionado, sin ningún aviso. */
+export async function archivarServicio(
+  id: string,
+  clase: Clase
+): Promise<ArchivarServicioState> {
   const { supabase, profesional } = await getAuthorizedProfesional();
   const { error } = await supabase
     .from("servicios_precios")
@@ -122,8 +137,10 @@ export async function archivarServicio(id: string, clase: Clase): Promise<void> 
     .eq("profesional_id", profesional.id);
   if (error) {
     console.error("[archivarServicio] update falló:", error);
+    return { status: "error", error: "No se pudo archivar. Intentá de nuevo." };
   }
   revalidatePath(pathDeClase(clase));
+  return { status: "success" };
 }
 
 export type AplicarAumentoState =

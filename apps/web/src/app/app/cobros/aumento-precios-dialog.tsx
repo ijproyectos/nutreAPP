@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ToggleSwitch } from "@/components/ui/toggle-switch";
 import { aplicarAumentoPrecios, obtenerCatalogoCompleto } from "./catalogo-actions";
+import { pill } from "./pill";
 
 const PORCENTAJES = [10, 15, 20, 25];
 const ALCANCES = [
@@ -20,12 +21,6 @@ const ALCANCES = [
   { value: "consultas", label: "Solo consultas" },
   { value: "desactualizados", label: "Solo los desactualizados" },
 ] as const;
-
-function pill(activo: boolean) {
-  return activo
-    ? "border-[#D8C4D6] bg-accent text-primary"
-    : "border-input bg-background text-[#4C4455] hover:border-[#C8BFC9]";
-}
 
 function redondear(precio: number, pct: number) {
   return Math.round(((precio * (1 + pct / 100)) / 500)) * 500;
