@@ -117,20 +117,26 @@ export default async function FichaPacientePage(
     .order("fecha_hora", { ascending: false });
 
   // Tab Consulta ("de qué veníamos") + tab Historia (línea de tiempo).
-  const { data: consultas } = await supabase
+  const { data: consultas, error: consultasError } = await supabase
     .from("consultas")
     .select("id, fecha, acordado, completo, cambio, created_at")
     .eq("paciente_id", id)
     .order("fecha", { ascending: false })
     .limit(60);
+  if (consultasError) {
+    console.error("[FichaPacientePage] select de consultas falló:", consultasError);
+  }
 
   // Tab Consulta ("qué pasó desde entonces" + grilla de adherencia).
-  const { data: registros } = await supabase
+  const { data: registros, error: registrosError } = await supabase
     .from("registros_comida")
     .select("fecha, adherencia")
     .eq("paciente_id", id)
     .order("fecha", { ascending: false })
     .limit(60);
+  if (registrosError) {
+    console.error("[FichaPacientePage] select de registros_comida falló:", registrosError);
+  }
 
   const { data: laboratorios } = await supabase
     .from("laboratorios")
@@ -151,13 +157,16 @@ export default async function FichaPacientePage(
   const documentos = await obtenerDocumentos(supabase, id);
 
   // Tab Consulta ("pendiente de cobro").
-  const { data: cobrosPendientes } = await supabase
+  const { data: cobrosPendientes, error: cobrosError } = await supabase
     .from("cobros")
     .select("monto, fecha_vencimiento, created_at")
     .eq("paciente_id", id)
     .eq("estado", "pendiente")
     .order("created_at", { ascending: true })
     .limit(1);
+  if (cobrosError) {
+    console.error("[FichaPacientePage] select de cobros falló:", cobrosError);
+  }
 
   const edad = edadDesde(paciente.fecha_nacimiento);
   const pendientes = (laboratorios ?? []).filter(
@@ -435,6 +444,7 @@ export default async function FichaPacientePage(
         fechaUltimoArchivo ? `Lo último que subió fue el ${formatoFechaCorta(fechaUltimoArchivo)}.` : null
       }
       laboratoriosSection={laboratoriosContent}
+      hayLaboratorios={(laboratorios ?? []).length > 0}
       documentos={documentos}
       planesEnviados={planesEnviados.map((p) => ({ id: p.id, enviadoAt: p.enviado_at }))}
     />

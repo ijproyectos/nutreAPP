@@ -18,6 +18,7 @@ export function ArchivosPanel({
   pacienteNombre,
   ultimaActividad,
   laboratoriosSection,
+  hayLaboratorios,
   documentos,
   planesEnviados,
 }: {
@@ -27,10 +28,13 @@ export function ArchivosPanel({
    * null si no hay nada todavía. */
   ultimaActividad: string | null;
   laboratoriosSection: ReactNode;
+  /** Para el estado vacío del final — `laboratoriosSection` ya viene
+   * renderizado, así que no hay forma de contar sus filas desde acá. */
+  hayLaboratorios: boolean;
   documentos: DocumentoPaciente[];
   planesEnviados: { id: string; enviadoAt: string }[];
 }) {
-  const totalArchivos = documentos.length + planesEnviados.length;
+  const sinNadaTodavia = !hayLaboratorios && documentos.length === 0 && planesEnviados.length === 0;
 
   return (
     <div className="max-w-[820px]">
@@ -139,7 +143,7 @@ export function ArchivosPanel({
         )}
       </div>
 
-      {totalArchivos === 0 && documentos.length === 0 && (
+      {sinNadaTodavia && (
         <div className="mt-4 rounded-xl border border-dashed border-[#D8CDD7] bg-card px-4.5 py-5 text-center">
           <p className="text-[13.5px] leading-[1.55] text-muted-foreground text-pretty">
             Subí un PDF, una foto de un laboratorio o un informe — queda en la historia de{" "}
