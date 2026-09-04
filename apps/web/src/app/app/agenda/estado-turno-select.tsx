@@ -56,7 +56,7 @@ export function EstadoTurnoSelect({
           // la nueva opción en el momento en que dispara onChange.
           formRef.current?.requestSubmit();
         }}
-        className="h-7 rounded-md border border-border bg-background px-2 text-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
+        className="h-7 rounded-[7px] border border-border bg-background px-2 text-[11.5px] font-medium text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
       >
         {OPCIONES.map((o) => (
           <option key={o.value} value={o.value}>

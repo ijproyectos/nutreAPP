@@ -1,4 +1,6 @@
 import { getAuthorizedProfesional } from "@/lib/dal";
+import { obtenerTurnosSinConfirmar } from "@/lib/queries/dashboard";
+import { obtenerPacientesSinProximoTurno } from "@/lib/queries/pacientes";
 import { AgendaView } from "./agenda-view";
 
 // RF-030/031/032. Ventana de turnos traída de una: últimos 30 días (para
@@ -16,7 +18,13 @@ export default async function AgendaPage(props: PageProps<"/app/agenda">) {
   const hasta = new Date();
   hasta.setDate(hasta.getDate() + 120);
 
-  const [{ data: turnos }, { data: pacientes }, { data: preferencias }] = await Promise.all([
+  const [
+    { data: turnos },
+    { data: pacientes },
+    { data: preferencias },
+    sinProximoTurno,
+    sinConfirmar,
+  ] = await Promise.all([
     supabase
       .from("turnos")
       .select("id, fecha_hora, tipo, estado, notas, pacientes(id, nombre)")
@@ -34,6 +42,12 @@ export default async function AgendaPage(props: PageProps<"/app/agenda">) {
       .select("tipo_turno_default")
       .eq("id", profesional.id)
       .maybeSingle(),
+    // Rediseño (NutrIA Agenda.dc.html): las dos tarjetas de señal arriba
+    // del calendario — mismas queries que ya usa la Bandeja de hoy, para
+    // que los números coincidan en toda la app en vez de recalcularse
+    // distinto acá.
+    obtenerPacientesSinProximoTurno(supabase),
+    obtenerTurnosSinConfirmar(supabase),
   ]);
 
   const turnosNormalizados = (turnos ?? []).map((t) => {
@@ -59,22 +73,20 @@ export default async function AgendaPage(props: PageProps<"/app/agenda">) {
     : undefined;
 
   return (
-    <div className="flex flex-col gap-5 p-6">
-      <div>
-        <h1 className="text-2xl font-bold text-primary">Agenda</h1>
-        <p className="text-sm text-muted-foreground">
-          Turnos de los últimos 30 días y los próximos 4 meses.
-        </p>
+    <div className="p-[38px] pb-16">
+      <div className="mx-auto max-w-[1180px]">
+        <AgendaView
+          turnos={turnosNormalizados}
+          pacientes={pacientesOpciones}
+          pacienteFijo={pacienteFijo}
+          tipoTurnoDefault={
+            (preferencias?.tipo_turno_default as "presencial" | "videollamada" | null) ??
+            "presencial"
+          }
+          pacientesSinTurno={sinProximoTurno}
+          turnosSinConfirmar={sinConfirmar}
+        />
       </div>
-      <AgendaView
-        turnos={turnosNormalizados}
-        pacientes={pacientesOpciones}
-        pacienteFijo={pacienteFijo}
-        tipoTurnoDefault={
-          (preferencias?.tipo_turno_default as "presencial" | "videollamada" | null) ??
-          "presencial"
-        }
-      />
     </div>
   );
 }

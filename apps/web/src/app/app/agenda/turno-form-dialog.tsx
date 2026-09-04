@@ -162,19 +162,24 @@ export function TurnoFormDialog({
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="tipo">Tipo</Label>
-                <select
-                  id="tipo"
-                  name="tipo"
-                  value={tipo}
-                  onChange={(e) =>
-                    setTipo(e.target.value as "presencial" | "videollamada")
-                  }
-                  className={selectClass}
-                >
-                  <option value="presencial">Presencial</option>
-                  <option value="videollamada">Videollamada</option>
-                </select>
+                <Label>Modalidad</Label>
+                <input type="hidden" name="tipo" value={tipo} />
+                <div className="flex flex-wrap gap-1.5">
+                  {(["presencial", "videollamada"] as const).map((valor) => (
+                    <button
+                      key={valor}
+                      type="button"
+                      onClick={() => setTipo(valor)}
+                      className={`rounded-full border px-3.5 py-2 text-[12.5px] font-semibold transition-colors ${
+                        tipo === valor
+                          ? "border-[#D8C4D6] bg-accent text-primary"
+                          : "border-input bg-background text-muted-foreground hover:border-[#C8BFC9]"
+                      }`}
+                    >
+                      {valor === "presencial" ? "Presencial" : "Videollamada"}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className="flex flex-col gap-1.5">
