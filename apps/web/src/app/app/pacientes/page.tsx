@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { TriangleAlert } from "lucide-react";
+import { TriangleAlert, UserPlus } from "lucide-react";
 import { getAuthorizedProfesional } from "@/lib/dal";
 import { obtenerPacientesSinProximoTurno } from "@/lib/queries/pacientes";
 import { edadDesde, formatoFechaCorta, tiempoRelativo } from "@/lib/format";
@@ -11,8 +11,6 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table";
-import { UserPlus } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PacientesFiltros } from "./pacientes-filtros";
 
@@ -98,146 +96,170 @@ export default async function PacientesPage(
     : filas;
 
   return (
-    <div className="flex flex-col gap-5 p-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-primary">Pacientes</h1>
-          <p className="text-sm text-muted-foreground">
-            Gestión de pacientes del consultorio
-          </p>
+    <div className="p-[38px] pb-16">
+      <div className="mx-auto max-w-[1180px]">
+        <div className="mb-[22px] flex flex-wrap items-start justify-between gap-6">
+          <div>
+            <h1 className="font-heading text-[31px] leading-[1.15]">Pacientes</h1>
+            <p className="mt-1.5 text-sm tabular-nums text-muted-foreground">
+              {filas.filter((f) => f.estado === "activo").length} activos ·{" "}
+              {alertaSinTurno.length} sin próximo turno
+            </p>
+          </div>
+          <div className="flex gap-2.5">
+            <Button variant="outline" disabled title="Próximamente">
+              Importar pacientes
+            </Button>
+            <Button
+              variant="default"
+              nativeButton={false}
+              render={<Link href="/app/pacientes/nuevo" />}
+              className="gap-1.5"
+            >
+              <UserPlus className="size-4" />
+              Nuevo paciente
+            </Button>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" disabled title="Próximamente">
-            Importar pacientes
-          </Button>
-          <Button
-            variant="default"
-            nativeButton={false}
-            render={<Link href="/app/pacientes/nuevo" />}
-            className="gap-1.5"
+
+        {alertaSinTurno.length > 0 && (
+          <Link
+            href="/app"
+            className="mb-[18px] flex items-center justify-between gap-5 rounded-xl border border-[#F1DCC2] bg-[#FDF6EE] px-[18px] py-3.5 text-[13.5px] transition-colors hover:border-[#E7CBA6] hover:bg-[#FBEFE0]"
           >
-            <UserPlus className="size-4" />
-            Nuevo paciente
-          </Button>
-        </div>
-      </div>
-
-      {alertaSinTurno.length > 0 && (
-        <div className="flex items-center justify-between gap-4 rounded-xl border border-accent-foreground/15 bg-accent px-4 py-3 text-sm text-accent-foreground">
-          <span className="flex items-center gap-2">
-            <TriangleAlert className="size-4" />
-            <strong>{alertaSinTurno.length}</strong> paciente
-            {alertaSinTurno.length === 1 ? "" : "s"} no{" "}
-            {alertaSinTurno.length === 1 ? "tiene" : "tienen"} próximo turno
-            agendado.
-          </span>
-          <Link href="/app" className="shrink-0 font-medium hover:underline">
-            Ver en la Bandeja de hoy →
+            <span className="flex min-w-0 items-center gap-2.5 text-[#4C4455]">
+              <TriangleAlert className="size-[18px] shrink-0 text-[#A8631F]" />
+              <span>
+                <strong className="font-bold text-[#A8631F]">
+                  {alertaSinTurno.length} de {filas.length} pacientes
+                </strong>{" "}
+                no tienen próximo turno agendado.
+              </span>
+            </span>
+            <span className="shrink-0 text-[12.5px] font-bold whitespace-nowrap text-[#A8631F]">
+              Ver en la Bandeja de hoy →
+            </span>
           </Link>
-        </div>
-      )}
+        )}
 
-      <PacientesFiltros sinTurnoCount={alertaSinTurno.length} />
+        <PacientesFiltros sinTurnoCount={alertaSinTurno.length} />
 
-      <div className="overflow-x-auto rounded-xl border border-border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Paciente</TableHead>
-              <TableHead>Teléfono</TableHead>
-              <TableHead>Última consulta</TableHead>
-              <TableHead>Continuidad</TableHead>
-              <TableHead>Actividad</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filasVisibles.length === 0 && (
-              <TableRow>
-                <TableCell
-                  colSpan={5}
-                  className="py-8 text-center text-muted-foreground"
-                >
-                  No hay pacientes que coincidan con estos filtros.
-                </TableCell>
+        <div className="overflow-x-auto rounded-2xl border border-border bg-card shadow-[0_1px_2px_rgba(36,28,44,.04),0_14px_32px_-24px_rgba(36,28,44,.14)]">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-secondary hover:bg-secondary">
+                <TableHead className="text-[10px] font-bold tracking-[.11em] text-muted-foreground uppercase">
+                  Paciente
+                </TableHead>
+                <TableHead className="text-[10px] font-bold tracking-[.11em] text-muted-foreground uppercase">
+                  Teléfono
+                </TableHead>
+                <TableHead className="text-[10px] font-bold tracking-[.11em] text-muted-foreground uppercase">
+                  Última consulta
+                </TableHead>
+                <TableHead className="text-[10px] font-bold tracking-[.11em] text-muted-foreground uppercase">
+                  Continuidad
+                </TableHead>
+                <TableHead className="text-[10px] font-bold tracking-[.11em] text-muted-foreground uppercase">
+                  Actividad
+                </TableHead>
               </TableRow>
-            )}
-            {filasVisibles.map((p) => {
-              const edad = edadDesde(p.fecha_nacimiento);
-              const iniciales = p.nombre
-                .split(" ")
-                .filter(Boolean)
-                .slice(0, 2)
-                .map((s: string) => s[0]?.toUpperCase())
-                .join("");
-              return (
-                <TableRow
-                  key={p.id}
-                  className={
-                    sinTurnoIds.has(p.id)
-                      ? "border-l-2 border-l-destructive"
-                      : ""
-                  }
-                >
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-semibold">
-                        {iniciales}
-                      </div>
-                      <div className="flex flex-col">
-                        <Link
-                          href={`/app/pacientes/${p.id}`}
-                          className="font-medium hover:underline"
-                        >
-                          {p.nombre}
-                        </Link>
-                        {edad !== null && (
-                          <span className="text-xs text-muted-foreground">
-                            {edad} años
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {p.telefono || "—"}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {p.ultima ? formatoFechaCorta(p.ultima.fecha_hora) : "—"}
-                  </TableCell>
-                  <TableCell>
-                    {p.proximo ? (
-                      formatoFechaCorta(p.proximo.fecha_hora)
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <Badge
-                          variant="outline"
-                          className="border-accent-foreground/20 bg-accent text-accent-foreground"
-                        >
-                          Sin próximo turno
-                        </Badge>
-                        <Link
-                          href={`/app/agenda?paciente=${p.id}`}
-                          className="text-sm font-medium text-primary hover:underline"
-                        >
-                          Agendar
-                        </Link>
-                      </div>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {tiempoRelativo(p.actividad)}
+            </TableHeader>
+            <TableBody>
+              {filasVisibles.length === 0 && (
+                <TableRow>
+                  <TableCell
+                    colSpan={5}
+                    className="py-8 text-center text-muted-foreground"
+                  >
+                    No hay pacientes que coincidan con estos filtros.
                   </TableCell>
                 </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </div>
+              )}
+              {filasVisibles.map((p) => {
+                const edad = edadDesde(p.fecha_nacimiento);
+                const iniciales = p.nombre
+                  .split(" ")
+                  .filter(Boolean)
+                  .slice(0, 2)
+                  .map((s: string) => s[0]?.toUpperCase())
+                  .join("");
+                const sinTurno = sinTurnoIds.has(p.id);
+                return (
+                  <TableRow
+                    key={p.id}
+                    className={
+                      sinTurno
+                        ? "bg-[#FEFAF9] shadow-[inset_3px_0_0_#B4483A] hover:bg-[#FCF3F0]"
+                        : ""
+                    }
+                  >
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <div className="flex size-[34px] shrink-0 items-center justify-center rounded-full bg-accent text-[11px] font-bold text-primary">
+                          {iniciales}
+                        </div>
+                        <div className="min-w-0">
+                          <Link
+                            href={`/app/pacientes/${p.id}`}
+                            className="block truncate text-sm font-semibold text-foreground hover:text-primary"
+                          >
+                            {p.nombre}
+                          </Link>
+                          {edad !== null && (
+                            <span className="text-[11.5px] text-muted-foreground">
+                              {edad} años
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-[13px] tabular-nums text-[#4C4455]">
+                      {p.telefono || "—"}
+                    </TableCell>
+                    <TableCell className="text-[13px] tabular-nums text-[#4C4455]">
+                      {p.ultima ? formatoFechaCorta(p.ultima.fecha_hora) : "—"}
+                    </TableCell>
+                    <TableCell>
+                      {p.proximo ? (
+                        <span className="text-[13px] tabular-nums text-foreground">
+                          {formatoFechaCorta(p.proximo.fecha_hora)}
+                        </span>
+                      ) : (
+                        <div className="flex items-center gap-3">
+                          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-[7px] border border-[#EFCFC7] bg-[#FBEAE6] px-2.5 py-1 text-[11.5px] font-bold whitespace-nowrap text-destructive">
+                            <span className="size-1.5 shrink-0 rounded-full bg-[#B4483A]" />
+                            Sin próximo turno
+                          </span>
+                          <Link
+                            href={`/app/agenda?paciente=${p.id}`}
+                            className="text-[12.5px] font-bold whitespace-nowrap text-primary hover:underline"
+                          >
+                            Agendar
+                          </Link>
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <span
+                          className="size-1.5 shrink-0 rounded-full"
+                          style={{ background: sinTurno ? "#C4792F" : "#9CAF88" }}
+                        />
+                        {tiempoRelativo(p.actividad)}
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
 
-      <p className="text-xs text-muted-foreground">
-        Mostrando 1 a {filasVisibles.length} de {filasVisibles.length}{" "}
-        resultados
-      </p>
+        <p className="mt-3.5 text-[12.5px] tabular-nums text-muted-foreground">
+          Mostrando 1 a {filasVisibles.length} de {filasVisibles.length} resultados
+        </p>
+      </div>
     </div>
   );
 }

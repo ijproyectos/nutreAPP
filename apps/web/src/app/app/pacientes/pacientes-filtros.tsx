@@ -3,9 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { Search, SlidersHorizontal } from "lucide-react";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 const ESTADO_TABS = [
@@ -45,28 +43,28 @@ export function PacientesFiltros({ sinTurnoCount }: { sinTurnoCount: number }) {
   }, [q]);
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <div className="relative w-full max-w-xs">
-        <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
+    <div className="mb-4 flex flex-wrap items-center gap-3">
+      <div className="flex h-[38px] w-[300px] min-w-[200px] shrink items-center gap-2 rounded-[10px] border border-input bg-card px-3.5">
+        <Search className="size-4 shrink-0 text-[#BAB2BE]" />
+        <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Buscar por nombre o teléfono…"
-          className="pl-8"
+          placeholder="Buscar por nombre o teléfono"
+          className="w-full bg-transparent text-[13px] outline-none placeholder:text-[#A69EAA]"
         />
       </div>
 
-      <div className="flex items-center gap-1 rounded-lg bg-muted p-1">
+      <div className="flex gap-0.5 rounded-[10px] border border-border bg-[#F1EAEF] p-[3px]">
         {ESTADO_TABS.map((tab) => (
           <button
             key={tab.value}
             type="button"
             onClick={() => pushParams({ estado: tab.value })}
             className={cn(
-              "rounded-md px-3 py-1 text-sm transition-colors",
+              "rounded-lg px-3.5 py-[7px] text-[12.5px] font-semibold transition-colors",
               estado === tab.value
                 ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:text-foreground"
+                : "text-muted-foreground hover:bg-card hover:text-foreground"
             )}
           >
             {tab.label}
@@ -78,20 +76,20 @@ export function PacientesFiltros({ sinTurnoCount }: { sinTurnoCount: number }) {
         type="button"
         onClick={() => pushParams({ sin_turno: sinTurno ? null : "1" })}
         className={cn(
-          "flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition-colors",
+          "flex h-[38px] items-center gap-2 rounded-[10px] border pl-3.5 pr-3 text-[12.5px] font-semibold transition-colors",
           sinTurno
-            ? "border-accent-foreground/20 bg-accent text-accent-foreground"
-            : "border-border bg-background text-muted-foreground hover:text-foreground"
+            ? "border-[#EED3CB] bg-[#FBEFEB] text-destructive hover:border-[#E1BBB1] hover:bg-[#F8E4DD]"
+            : "border-border bg-card text-muted-foreground hover:text-foreground"
         )}
       >
-        <span className="size-1.5 rounded-full bg-current" />
+        <span className="size-1.5 rounded-full bg-[#B4483A]" />
         Sin próximo turno
-        <Badge variant="secondary" className="ml-0.5">
+        <span className="rounded-full bg-[#F1D3CB] px-1.5 py-0.5 text-[11px] font-bold tabular-nums text-[#8E3C2F]">
           {sinTurnoCount}
-        </Badge>
+        </span>
       </button>
 
-      <Button variant="outline" className="gap-1.5" disabled title="Próximamente">
+      <Button variant="outline" size="lg" className="h-[38px] gap-1.5" disabled title="Próximamente">
         <SlidersHorizontal className="size-4" />
         Filtros
       </Button>
