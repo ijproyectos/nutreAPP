@@ -24,6 +24,7 @@ export async function crearCobro(
   const montoRaw = String(formData.get("monto") ?? "").trim();
   const fechaVencimiento = String(formData.get("fecha_vencimiento") ?? "").trim() || null;
   const consultaId = String(formData.get("consulta_id") ?? "").trim() || null;
+  const servicioId = String(formData.get("servicio_id") ?? "").trim() || null;
 
   if (!pacienteId) {
     return { status: "error", error: "Elegí un paciente." };
@@ -55,10 +56,23 @@ export async function crearCobro(
     }
   }
 
+  if (servicioId) {
+    const { data: servicioPropio } = await supabase
+      .from("servicios_precios")
+      .select("id")
+      .eq("id", servicioId)
+      .eq("profesional_id", profesional.id)
+      .maybeSingle();
+    if (!servicioPropio) {
+      return { status: "error", error: "Servicio inválido." };
+    }
+  }
+
   const { error } = await supabase.from("cobros").insert({
     profesional_id: profesional.id,
     paciente_id: pacienteId,
     consulta_id: consultaId,
+    servicio_id: servicioId,
     monto,
     fecha_vencimiento: fechaVencimiento,
   });

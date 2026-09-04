@@ -27,9 +27,14 @@ import { crearCobro, obtenerConsultasDePaciente } from "./actions";
 // problema.
 export function NuevoCobroDialog({
   pacientes,
+  servicios,
   pacienteIdInicial,
 }: {
   pacientes: { id: string; nombre: string }[];
+  /** Catálogo de precios (servicios/cobros/servicios) — opcional: elegir
+   * uno autocompleta el monto (igual editable) y guarda `servicio_id`
+   * para que las estadísticas de uso del catálogo cuenten este cobro. */
+  servicios: { id: string; nombre: string; precio: number }[];
   /** /app/cobros?paciente=<id> — deep-link desde el chip "Cobrar" del
    * chat de un paciente (rediseño). Abre el diálogo con ese paciente
    * preseleccionado en vez de obligar a elegirlo de nuevo. */
@@ -42,6 +47,7 @@ export function NuevoCobroDialog({
   // consultas y limpia la URL).
   const [open, setOpen] = useState(() => !!pacienteIdInicial);
   const [pacienteId, setPacienteId] = useState(() => pacienteIdInicial ?? "");
+  const [servicioId, setServicioId] = useState("");
   const [monto, setMonto] = useState("");
   const [fechaVencimiento, setFechaVencimiento] = useState("");
   const [consultaId, setConsultaId] = useState("");
@@ -52,11 +58,18 @@ export function NuevoCobroDialog({
 
   function reset() {
     setPacienteId("");
+    setServicioId("");
     setMonto("");
     setFechaVencimiento("");
     setConsultaId("");
     setConsultas([]);
     setError(null);
+  }
+
+  function handleServicioChange(id: string) {
+    setServicioId(id);
+    const servicio = servicios.find((s) => s.id === id);
+    if (servicio) setMonto(String(servicio.precio));
   }
 
   async function handlePacienteChange(id: string) {
@@ -92,6 +105,7 @@ export function NuevoCobroDialog({
 
     const fd = new FormData();
     fd.set("paciente_id", pacienteId);
+    fd.set("servicio_id", servicioId);
     fd.set("monto", monto);
     fd.set("fecha_vencimiento", fechaVencimiento);
     fd.set("consulta_id", consultaId);
@@ -148,6 +162,27 @@ export function NuevoCobroDialog({
               ))}
             </select>
           </div>
+
+          {servicios.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="servicio_id">
+                Servicio <span className="text-muted-foreground">(opcional)</span>
+              </Label>
+              <select
+                id="servicio_id"
+                value={servicioId}
+                onChange={(e) => handleServicioChange(e.target.value)}
+                className="h-9 rounded-lg border border-input bg-background px-3 text-sm"
+              >
+                <option value="">Monto manual, sin servicio del catálogo</option>
+                {servicios.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.nombre} — ${s.precio.toLocaleString("es-AR")}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="monto">Monto</Label>
